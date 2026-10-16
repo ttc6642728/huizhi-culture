@@ -19,12 +19,12 @@
 | P0 脚手架 | 13 | 13 | 0 | 1.43s |
 | P1 数据层 | 72 | 72 | 0 | 2.57s |
 | P2 知识图谱 | 133 | 133 | 0 | 10.73s |
-| P3 浏览体验 | 192 | 192 | 0 | 7.64s |
+| P3 浏览体验 | 197 | 197 | 0 | 8.14s |
 
-**当前累计：192 通过 / 0 失败 / 0 跳过。** 无弃用或运行时警告。
+**当前累计：197 通过 / 0 失败 / 0 跳过。** 无弃用或运行时警告。
 
 > 用例数大于测试函数数：部分测试用 `@pytest.mark.parametrize` 展开
-> （如「一府六县」六个县份各一条用例）。当前共 **178 个测试函数 / 192 个用例**。
+> （如「一府六县」六个县份各一条用例）。当前共 **183 个测试函数 / 197 个用例**。
 
 分文件用例数（P3 后）：
 
@@ -33,13 +33,13 @@ tests/test_components.py       12
 tests/test_config.py            8
 tests/test_data_integrity.py   26
 tests/test_graph.py            60
-tests/test_image_library.py     8
+tests/test_image_library.py    13
 tests/test_loader.py           20
 tests/test_nav.py              16
 tests/test_repository.py       25
 tests/test_smoke.py            17
 --------------------------------------------------
-合计                          192
+合计                          197
 ```
 
 ---
@@ -210,13 +210,13 @@ platform win32 -- Python 3.13.14, pytest-9.1.1, pluggy-1.7.0
 rootdir: E:\huizhi-culture
 configfile: pytest.ini
 testpaths: tests
-collected 192 items
+collected 197 items
 
-........................................................................ [ 37%]
-........................................................................ [ 75%]
-................................................                         [100%]
+........................................................................ [ 36%]
+........................................................................ [ 73%]
+.....................................................                    [100%]
 
-============================ 192 passed in 7.64s =============================
+============================ 197 passed in 8.14s =============================
 ```
 
 ### tests/test_nav.py（16 项）— 导航模型
@@ -238,18 +238,23 @@ collected 192 items
 | `test_goto_clears_stale_params` | 跳转清掉上一次的残留参数 | PASS |
 | `test_nav_keys_are_unique` | 导航 key 不重复 | PASS |
 
-### tests/test_image_library.py（8 项）— 图片库降级
+### tests/test_image_library.py（13 项）— 图片库降级与真实清单合规
 
 | 用例 | 验证内容 | 结果 |
 |---|---|---|
-| `test_missing_manifest_yields_empty_library` | 清单文件不存在时返回空库、不抛错 | PASS |
-| `test_corrupt_manifest_yields_empty_library` | JSON 损坏时安全降级 | PASS |
-| `test_entry_with_missing_file_is_skipped` | 图片文件丢失的条目被跳过 | PASS |
-| `test_only_free_licenses_are_accepted` | 仅接受 CC0 / CC BY / CC BY-SA / PD / GFDL；拒绝 NC / ND | PASS |
-| `test_credit_falls_back_when_author_missing` | 作者缺失时 credit 返回「作者见来源页面」 | PASS |
-| `test_lookup_by_entity_id` | 按实体 id 取图正确 | PASS |
-| `test_unillustrated_entity_returns_none` | 无图实体返回 `None`（而非报错） | PASS |
-| `test_library_is_immutable_and_cached` | 库对象不可变且可缓存 | PASS |
+| `test_missing_manifest_is_not_an_error` | 清单不存在属正常状态、不抛错 | PASS |
+| `test_valid_manifest_loads` | 正常清单载入、路径与署名正确 | PASS |
+| `test_credit_without_artist_is_honest` | 作者缺失时如实说明，不编造 | PASS |
+| `test_entry_with_missing_file_is_skipped` | 图片文件丢失的条目被跳过并记录 | PASS |
+| `test_corrupt_manifest_degrades` | JSON 损坏时安全降级 | PASS |
+| `test_manifest_images_not_a_list` | `images` 非数组时安全降级 | PASS |
+| `test_entries_without_ids_are_skipped` | 缺 entity_id 的条目被跳过 | PASS |
+| `test_project_library_never_crashes` | 对真实目录载入永不崩溃 | PASS |
+| `test_real_manifest_meets_delivery_minimum` | **真实清单存在且 ≥ 8 张**（防止清单一度被写成空） | PASS |
+| `test_real_manifest_licenses_are_free` | **每张真实图片许可都在白名单内**，且不含 NC / ND | PASS |
+| `test_real_manifest_files_are_valid_images` | 每张图都是有效 JPEG 且未被截断 | PASS |
+| `test_real_manifest_entities_exist_in_dataset` | 清单只引用数据集中真实存在的实体 id | PASS |
+| `test_real_manifest_entries_are_fully_attributed` | 每张图都有图注、作者与 Commons 来源页面 | PASS |
 
 ### tests/test_components.py（12 项）— 展示组件
 
@@ -302,7 +307,8 @@ P3 新增以下用例（在原有基础上扩充）：
 |---|---|---|
 | 数据校验 CLI | `python scripts/validate_data.py` | 通过，无孤立实体 |
 | 图谱验证报告 | `python scripts/graph_report.py` | 「全部检查通过」（建图保真 + 离线自洽） |
-| 图片抓取脚本 dry-run | `python scripts/fetch_images.py --dry-run` | 脚本可运行、过滤逻辑真实生效（联网通道不可达，未下载） |
+| 图片抓取脚本 dry-run | `python scripts/fetch_images.py --dry-run` | 经 Microlink 中转真实检索，29 个实体中命中 16 个后触及免费额度 |
+| 图片实际下载 | `python scripts/fetch_images.py --from-resolved assets/images/.resolved.json --pace 6` | **实际下载 11 张真实 Commons 图片**，全部通过许可白名单校验 |
 | 语法编译 | `python -m compileall app.py src scripts` | 通过 |
 | Streamlit 脚本执行 | `AppTest`（首页 / 图谱 / 百科 / 详情 / 待开发页） | 无异常、无警告 |
 | 应用启动 | `streamlit run app.py` | 启动成功，`/_stcore/health` = 200 |
@@ -337,7 +343,7 @@ P3 新增以下用例（在原有基础上扩充）：
 |---|---|---|
 | 检索与问答测试 | 检索与三层后端尚未实现 | P4 |
 | 工作流测试 | 智能体工作流尚未实现 | P5 |
-| 图片素材 | 本机对 Wikimedia Commons 的 TCP 连接被阻断（非代码问题），未下载图片；已做优雅降级 | 可在能访问 Commons 的网络重跑 `scripts/fetch_images.py` |
+| 图片素材 | 已收录 11 张真实图片；检索侧受 Microlink 免费额度（约 15 次/日）限制，未覆盖全部 29 个目标实体 | 额度恢复后重跑 `scripts/fetch_images.py`，或用 `--from-resolved` 续跑 |
 | 大图性能 | 当前 96 节点的交互式渲染实测约 830 KB；若实体超过 300 个需引入分片或预布局 | 视数据规模而定 |
 | 界面视觉回归 | 暂无截图对比测试 | P6 视情况补充 |
 | 真实模型联调 | API Key 已验证可用（HTTP 200），但问答链路尚未实现，未做端到端联调 | P4 |
@@ -348,3 +354,6 @@ P3 新增以下用例（在原有基础上扩充）：
 > （改为断言 `class="hz-ecard"` 出现与否）、组件测试传参不一致导致「0 条来源」误断言。
 > 另外 `test_graph.py` 与 `test_smoke.py` 中原先硬编码的数量断言（`== 90` / `== 150` / `== 26`）
 > 已统一改为**从数据集动态取期望值**，使数据扩充不再引发脆弱的假失败。
+>
+> 图片抓取过程中另修复两个实际缺陷：**URL 二次编码**（中文文件名被 `urlencode` 再编码成
+> `%25E9…` 导致取不到图）与**清单覆盖写**（分批续跑会抹掉上一批成果，改为按 `entity_id` 合并）。

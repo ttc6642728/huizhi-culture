@@ -1,0 +1,139 @@
+{
+  "version": "1.0",
+  "source": "Wikimedia Commons",
+  "note": "实体图片清单。仅收录自由授权图片，逐条登记作者、许可与来源页面。文件缺失或未登记的实体，界面会回退为无图排版。",
+  "images": [
+    {
+      "entity_id": "chengkan",
+      "file": "chengkan.jpg",
+      "caption": "呈坎村古建筑群·全国重点文物保护单位碑",
+      "title": "File:Chengkan 5456.jpg",
+      "artist": "Doctoroftcm",
+      "license": "CC BY-SA 3.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Chengkan_5456.jpg",
+      "width": 1948,
+      "height": 1209
+    },
+    {
+      "entity_id": "chengzhitang",
+      "file": "chengzhitang.jpg",
+      "caption": "承志堂厅堂内景",
+      "title": "File:Hongcun Chengzhi Hall 宏村承志堂 - panoramio.jpg",
+      "artist": "lienyuan lee",
+      "license": "CC BY 3.0",
+      "license_url": "https://creativecommons.org/licenses/by/3.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Hongcun_Chengzhi_Hall_%E5%AE%8F%E6%9D%91%E6%89%BF%E5%BF%97%E5%A0%82_-_panoramio.jpg",
+      "width": 1391,
+      "height": 1978
+    },
+    {
+      "entity_id": "huangshan",
+      "file": "huangshan.jpg",
+      "caption": "黄山花岗岩峰林",
+      "title": "File:Anhui Huangshan.jpg",
+      "artist": "Miaulian",
+      "license": "CC BY-SA 3.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Anhui_Huangshan.jpg",
+      "width": 4000,
+      "height": 2665
+    },
+    {
+      "entity_id": "qiyunshan",
+      "file": "qiyunshan.jpg",
+      "caption": "齐云山道观",
+      "title": "File:Qiyun Shan temple.JPG",
+      "artist": "Julienfuchs",
+      "license": "CC BY-SA 3.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Qiyun_Shan_temple.JPG",
+      "width": 4000,
+      "height": 3000
+    },
+    {
+      "entity_id": "tangmo",
+      "file": "tangmo.jpg",
+      "caption": "唐模村中牌坊",
+      "title": "File:黄山市歙县唐模村牌坊 - panoramio.jpg",
+      "artist": "江上清风1961",
+      "license": "CC BY 3.0",
+      "license_url": "https://creativecommons.org/licenses/by/3.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:%E9%BB%84%E5%B1%B1%E5%B8%82%E6%AD%99%E5%8E%BF%E5%94%90%E6%A8%A1%E6%9D%91%E7%89%8C%E5%9D%8A_-_panoramio.jpg",
+      "width": 2736,
+      "height": 1824
+    },
+    {
+      "entity_id": "tangyue",
+      "file": "tangyue.jpg",
+      "caption": "棠樾牌坊群·全国重点文物保护单位碑",
+      "title": "File:Tangyue 5328.jpg",
+      "artist": "Doctoroftcm",
+      "license": "CC BY-SA 3.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Tangyue_5328.jpg",
+      "width": 1934,
+      "height": 1337
+    },
+    {
+      "entity_id": "tunxi_laojie",
+      "file": "tunxi_laojie.jpg",
+      "caption": "黄山市屯溪镇俯瞰（徽派屋顶）",
+      "title": "File:安徽省黄山市屯溪镇俯瞰街景 - panoramio - luchangjiang~鲁昌江 (7).jpg",
+      "artist": "luchangjiang~鲁昌江",
+      "license": "CC BY-SA 3.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/3.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:%E5%AE%89%E5%BE%BD%E7%9C%81%E9%BB%84%E5%B1%B1%E5%B8%82%E5%B1%AF%E6%BA%AA%E9%95%87%E4%BF%AF%E7%9E%B0%E8%A1%97%E6%99%AF_-_panoramio_-_luchangjiang~%E9%B2%81%E6%98%8C%E6%B1%9F_%287%29.jpg",
+      "width": 1276,
+      "height": 759
+    },
+    {
+      "entity_id": "xidi",
+      "file": "xidi.jpg",
+      "caption": "西递村巷与水圳",
+      "title": "File:Xidi - 05.JPG",
+      "artist": "Anna Frodesiak",
+      "license": "Public domain",
+      "license_url": "https://en.wikipedia.org/wiki/Public_domain",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Xidi_-_05.JPG",
+      "width": 1600,
+      "height": 1200
+    },
+    {
+      "entity_id": "xucun",
+      "file": "xucun.jpg",
+      "caption": "许村牌坊",
+      "title": "File:Xucun Village, 2021-09-26 01.jpg",
+      "artist": "Siyuwj",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Xucun_Village%2C_2021-09-26_01.jpg",
+      "width": 5821,
+      "height": 3886
+    },
+    {
+      "entity_id": "xuguo_shifang",
+      "file": "xuguo_shifang.jpg",
+      "caption": "许国石坊",
+      "title": "File:20230904 Xuguo Shifang.jpg",
+      "artist": "Yumeto",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:20230904_Xuguo_Shifang.jpg",
+      "width": 4096,
+      "height": 3072
+    },
+    {
+      "entity_id": "yuliang",
+      "file": "yuliang.jpg",
+      "caption": "渔梁老街",
+      "title": "File:Shexian Yuliang 2016.11.13 07-46-43.jpg",
+      "artist": "Zhangzhugang",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Shexian_Yuliang_2016.11.13_07-46-43.jpg",
+      "width": 5472,
+      "height": 3648
+    }
+  ]
+}

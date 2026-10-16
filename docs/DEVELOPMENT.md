@@ -148,24 +148,44 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 **收益**：同一个实体在图谱节点、百科卡片、详情页色条上**颜色完全一致**，
 且配色定义只有一处。`tests/test_graph.py` 保留断言「11 个分类各有专属配色，不落到兜底色」。
 
-### 2.10 图片不可用时的优雅降级（P3）
+### 2.10 图片经中转服务获取，并做成可降级（P3）
 
-**背景**：P3 计划从 Wikimedia Commons 下载 CC 授权真实徽州图。实测本机对
-`commons.wikimedia.org` 的 TCP 连接被阻断（DNS 正常解析到 `103.102.166.224`，但直连 / 走代理 /
-脱离沙箱三种方式均超时 `code=000`；同环境的 `ihchina.cn`、`mirrors.aliyun.com` 均正常 `200`；
-Openverse API 同样不可达）。**这是网络阻断，不是代码问题**。
+**背景**：P3 计划从 Wikimedia Commons 下载 CC 授权真实徽州图。实测本机对 Wikimedia 存在
+**SNI 域名级阻断**（不是整体断网）：`commons.wikimedia.org` 与 `upload.wikimedia.org`
+的 DNS 被污染到 `103.102.166.x`（非 Wikimedia 真实网段），直连 / 走代理 / 脱离沙箱
+三种方式在 TCP 层均握手超时 `code=000`；而同一台机器上 `dumps.wikimedia.org`
+（真实 IP `208.80.154.242`）返回 `200`，且用真实 IP + `--resolve` 覆盖 commons/upload 仍失败
+——**证明是按域名（SNI）拦截，而非按 IP 或整体断网**。对照：`ihchina.cn`、`mirrors.aliyun.com`
+正常（200 / 301），`github.com`、`api.openverse.org`、Wikipedia 全站不可达。
 
-**决策**：不伪造图片、不降级用无关图凑数，而是把「无图」做成一种**一等公民的正常状态**：
+**决策**：改用**两个可达的中转服务**取回真实内容（内容仍来自 Wikimedia，授权与作者以 Commons API 为准）：
 
-1. `scripts/fetch_images.py` 完整实现（检索词 + 必须匹配 / 排除正则 + 许可白名单 +
-   分辨率与画幅过滤 + 同图去重 + 联网通道自动探测），可在任何能访问 Commons 的网络环境一键复现；
-2. `src/data/images.py` 的 `ImageLibrary` 在**清单缺失 / JSON 损坏 / 图片文件丢失**三种情况下
+| 用途 | 中转 | 说明 |
+|---|---|---|
+| 元数据（文件名 / 许可 / 作者） | `api.microlink.io` | 服务端渲染把目标 URL 抓回，据此间接调用 Commons API（`action=query`）。免费额度约 15 次/日，需可续跑。 |
+| 图片字节 | `wsrv.nl`（images.weserv.nl） | 开源图片代理/CDN，`?url=upload.wikimedia.org/...` 回源并缩放。回源 Wikimedia 时**上游会间歇 429**，需较长退避重试。 |
+
+同时把「无图」做成一等公民的正常状态：
+
+1. `src/data/images.py` 的 `ImageLibrary` 在**清单缺失 / JSON 损坏 / 图片文件丢失**三种情况下
    全部安全降级为空结果，绝不抛错中断页面；
-3. 界面在无图时显示纯排版降级形态（不显示破图占位）；
-4. `assets/images/README.md` 记录实测证据、复现命令与署名要求。
+2. 界面在无图时显示纯排版降级形态（不显示破图）；
+3. `scripts/fetch_images.py` 支持 `--from-resolved` 续跑模式——检索配额用尽时，
+   可依据已解析出的候选直接下载，无需重复消耗检索额度。
 
-**授权白名单**：仅接受 CC0 / CC BY / CC BY-SA / Public domain / GFDL，**主动拒绝 NC（非商用）
-与 ND（禁演绎）**，避免授权瑕疵。所有图片的 `credit` 在作者字段缺失时返回「作者见来源页面」而非空串。
+**踩过的两个坑（已修复）**：
+
+- **URL 二次编码**：`upload_url_of()` 已对中文文件名做百分号编码，若再用 `urlencode`
+  包一层会变成 `%E9 → %25E9`，导致中文名图片取不到；改为只拼接定值参数、url 原样透传。
+- **清单覆盖**：早期 `write_manifest` 是覆盖写，分批续跑会把上一批已成功的图片抹掉；
+  改为**按 `entity_id` 合并**。
+
+**授权白名单**：仅接受 CC0 / CC BY / CC BY-SA / Public domain / GFDL，**主动拒绝 NC / ND**。
+图注由人工**对照实际下载的图片内容**写定（例如「呈坎」「棠樾」两张是国保石碑而非村落全景，
+图注即如实标注为“……全国重点文物保护单位碑”）。
+
+**成果**：收录 11 张真实图片（西递、呈坎、唐模、棠樾、许村、渔梁、承志堂、屯溪、许国石坊、黄山、齐云山），
+全部通过许可白名单校验，逐条登记于 `assets/images/manifest.json` 与 `CREDITS.md`。
 
 ---
 
@@ -540,8 +560,10 @@ app.py（修改）                  路由改用 nav.resolve_route / highlight_o
 
 **遗留问题**
 
-- **图片素材仍未下载**：本机对 Wikimedia Commons 的 TCP 连接被阻断（非代码问题），
-  已把「无图」做成正常降级状态；可在能访问 Commons 的环境重跑 `scripts/fetch_images.py` 补齐。
+- **图片素材已收录 11 张**（经 Microlink + wsrv 中转取得，SNI 域名级阻断见 2.10）。
+  检索侧受 Microlink 免费额度（约 15 次/日）限制，尚未覆盖全部 29 个目标实体；
+  其余实体在额度恢复后重跑 `python scripts/fetch_images.py` 即可补齐，
+  也可用 `--from-resolved` 从已解析候选续跑。
 - 当前规模（96 节点 / 180 边）下单张全图 HTML 约 830 KB，一次性渲染仍流畅；
   若实体超过 300 个需引入按分类分片或服务端预布局。
 

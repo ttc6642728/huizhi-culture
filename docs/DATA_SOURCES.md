@@ -84,19 +84,27 @@
 
 ## 五、图片素材
 
-图片计划从 Wikimedia Commons 等自由授权来源下载，逐一登记授权协议、作者与原始链接，汇总于 `assets/images/CREDITS.md`。
+图片取自 **Wikimedia Commons**，逐一登记授权协议、作者与原始链接，汇总于
+`assets/images/manifest.json`（机器可读）与 `assets/images/CREDITS.md`（人工可读）。
 
-**P3 实测结论：本机网络无法访问 Wikimedia。** `commons.wikimedia.org` 的 DNS 可正常解析
-（→ `103.102.166.224`），但直连、走代理、脱离沙箱三种方式在 TCP 层均超时（`code=000`）；
-同环境的 `ihchina.cn`、`mirrors.aliyun.com` 返回 `200`，Openverse（`api.openverse.org`）亦不可达。
-**结论：网络阻断，非代码问题。**
+**P3 实测结论：本机对 Wikimedia 存在 SNI 域名级阻断。** `commons.wikimedia.org`
+与 `upload.wikimedia.org` 的 DNS 被污染到 `103.102.166.x`（非 Wikimedia 真实网段），
+直连、走代理、脱离沙箱三种方式在 TCP 层一律握手超时（`code=000`）；
+而同一台机器上 `dumps.wikimedia.org`（真实 IP `208.80.154.242`）返回 `200`，
+用真实 IP + `--resolve` 覆盖 commons/upload 仍失败——**证明是按域名（SNI）拦截，而非整体断网**。
+对照：`ihchina.cn`、`mirrors.aliyun.com` 正常，`github.com` 与 Wikipedia 全站不可达。
 
-因此本项目在 P3 阶段**未下载任何图片**，而是：
+**因此改走两个可达中转服务**（内容仍来自 Wikimedia，授权与作者以 Commons API 为准）：
 
-1. 完整实现抓取脚本 `scripts/fetch_images.py`（许可白名单 + 检索/排除正则 + 分辨率与画幅过滤 + 联网通道自动探测），
-   可在任何能访问 Commons 的网络环境一键复现；
-2. 由 `assets/images/README.md` 记录实测证据与复现命令；
-3. 应用在无图时**完整可用**（`src/data/images.py` 三种缺失场景全部安全降级，界面纯排版降级、不显示破图）。
+| 用途 | 中转服务 |
+|---|---|
+| 元数据（文件名 / 许可 / 作者） | `api.microlink.io` 服务端渲染 → 间接调用 Commons API |
+| 图片字节 | `wsrv.nl`（images.weserv.nl）图片代理 → 回源 upload.wikimedia.org |
+
+**已收录 11 张图片**，覆盖西递、呈坎、唐模、棠樾、许村、渔梁、承志堂、屯溪、
+许国石坊、黄山、齐云山；许可为 CC BY / CC BY-SA / 公有领域，逐条登记于 `CREDITS.md`。
 
 **授权白名单**：仅接受 CC0 / CC BY / CC BY-SA / Public domain / GFDL；
-**主动拒绝 NC（非商用）与 ND（禁演绎）**，避免授权瑕疵。
+**主动拒绝 NC（非商用）与 ND（禁演绎）**，避免授权瑕疵。图注由人工对照实际图片内容写定。
+
+说明与复现方式详见 `assets/images/README.md`。

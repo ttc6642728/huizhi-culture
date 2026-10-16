@@ -39,3 +39,6 @@ Thumbs.db
 # PyVis 生成的临时图谱 HTML
 outputs/
 *.log
+# 图片抓取的中间产物（已解析候选的续跑文件、探测目录）
+assets/images/.resolved.json
+.tmp_probe/
