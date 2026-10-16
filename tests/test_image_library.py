@@ -6,6 +6,8 @@
 
 from __future__ import annotations
 
+import functools
+import importlib.util
 import json
 from pathlib import Path
 from typing import Any, Dict
@@ -185,3 +187,118 @@ def test_real_manifest_entries_are_fully_attributed() -> None:
         assert image.source_url.startswith("https://commons.wikimedia.org/"), (
             f"{image.entity_id} 的来源页面不是 Commons：{image.source_url}"
         )
+
+
+# --------------------------------------------------------------------------
+# 抓取把关（对 `scripts/fetch_images.py` 里那套「相关性 + 候选硬性条件」的离线断言）
+#
+# 这一组存在的理由：曾经真的下错过三张图——「渐江」下到广东江河的航拍、
+# 「徽州牌坊」下到白云寺院门、「徽州祠堂」下到无锡惠山祠堂，
+# 而清单的图注却照抄了实体名，会让界面宣称错误事实。
+# 把关规则因此必须可被断言，而不是只活在抓取脚本的一次性运行里。
+# --------------------------------------------------------------------------
+
+_FETCH_SCRIPT = Path(__file__).resolve().parent.parent / "scripts" / "fetch_images.py"
+
+
+@functools.lru_cache(maxsize=1)
+def _fetch_module():
+    """按路径加载抓图脚本（`scripts/` 不是包，故用显式路径加载）。"""
+    spec = importlib.util.spec_from_file_location("fetch_images", _FETCH_SCRIPT)
+    assert spec and spec.loader, f"无法加载 {_FETCH_SCRIPT}"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _candidate(**overrides: Any) -> Dict[str, Any]:
+    """一张「各项都合格」的候选，供逐条破坏某一项来验证把关。"""
+    base: Dict[str, Any] = {
+        "title": "File:Chengkan 5456.jpg",
+        "file_name": "Chengkan 5456.jpg",
+        "mime": "image/jpeg",
+        "width": 1600,
+        "height": 1200,
+        "artist": "Doctoroftcm",
+        "credit": "",
+        "description": "Chengkan village, Huizhou, Anhui",
+        "license": "CC BY-SA 3.0",
+        "free": True,
+    }
+    base.update(overrides)
+    return base
+
+
+#: 真实下错过、后来被剔除的三个候选。文件名取自当时清单里的 `title`。
+_KNOWN_WRONG_CANDIDATES = (
+    ("jianjiang", "File:Jianjiang Delta Aerial View.png"),
+    ("huizhou_paifang", "File:Paifang, Baiyun Temple, 26 September 2020X.jpg"),
+    (
+        "huizhou_citang",
+        "File:Chu Hsi's ancestral temple in Wuxi Huishan ancient town.JPG",
+    ),
+)
+
+
+def test_target_gates_reject_the_candidates_actually_downloaded_by_mistake() -> None:
+    """这三个真实误召回必须被挡住（同名异地 / 同物异指）。"""
+    module = _fetch_module()
+    for entity_id, title in _KNOWN_WRONG_CANDIDATES:
+        assert not module.target_gate(entity_id, title=title, file_name=title[5:]), (
+            f"{entity_id} 的把关竟然放过了错误候选：{title}"
+        )
+
+
+def test_manifest_entries_pass_their_own_relevance_gate() -> None:
+    """清单里每一张图都必须能通过**它所属实体**的把关。
+
+    只看 Commons 侧的字段（标题 + 文件名），不看我们自己写的图注——
+    否则图注里出现实体名就能「自我证明」，把关也就失效了。
+    """
+    module = _fetch_module()
+    offenders: list = []
+    for image in ImageLibrary(config.BASE_DIR).all():
+        if not module.target_gate(
+            image.entity_id, title=image.title, file_name=image.path.name
+        ):
+            offenders.append(f"{image.entity_id} ← {image.title}")
+    assert not offenders, "以下图片通不过自身实体的相关性把关：\n  " + "\n  ".join(offenders)
+
+
+def test_target_specs_cover_every_target_and_are_non_trivial() -> None:
+    """每个目标实体都有把关条件，且必含词非空。"""
+    module = _fetch_module()
+    assert len(module.TARGET_SPECS) == len(module.TARGETS)
+    for entity_id, (musts, _exclude) in module.TARGET_SPECS.items():
+        assert musts, f"{entity_id} 没有必含词，等于不做把关"
+        assert all(pattern.strip() for pattern in musts), f"{entity_id} 有空的必含词段"
+
+
+@pytest.mark.parametrize(
+    "overrides, expected",
+    [
+        ({"artist": ""}, "作者"),
+        ({"artist": "   "}, "作者"),
+        ({"free": False, "license": "CC BY-NC 4.0"}, "许可"),
+        ({"mime": "application/pdf"}, "格式"),
+        ({"height": 0}, "尺寸"),
+        ({"width": 3000, "height": 800}, "画幅"),
+        ({"width": 500, "height": 700}, "分辨率"),
+        ({}, None),
+    ],
+)
+def test_candidate_rejection_rules(overrides: Dict[str, Any], expected: Any) -> None:
+    """候选硬性条件逐条生效；全部满足时返回 None。"""
+    reason = _fetch_module().candidate_rejection(_candidate(**overrides))
+    if expected is None:
+        assert reason is None, f"合格候选被误拦：{reason}"
+    else:
+        assert reason and expected in reason, f"期望因「{expected}」被拦，实际：{reason}"
+
+
+def test_candidate_without_author_is_rejected_not_credited_blindly() -> None:
+    """Commons 未登记作者的老照片一律不收——宁可缺图，也不写一条署不出作者的图。"""
+    module = _fetch_module()
+    # 这正是 `File:Huang Binhong.JPG` 的真实情况：有许可、无 Artist / Credit。
+    reason = module.candidate_rejection(_candidate(artist="", license="Public domain"))
+    assert reason is not None and "作者" in reason

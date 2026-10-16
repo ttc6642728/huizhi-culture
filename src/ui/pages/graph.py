@@ -37,7 +37,7 @@ CANVAS_HEIGHT = 700
 
 
 @st.cache_data(show_spinner=False, max_entries=16)
-def _graph_html(
+def _graph_shards(
     signature: Tuple[int, int, str],
     categories: Tuple[str, ...],
     relation_types: Tuple[str, ...],
@@ -45,12 +45,16 @@ def _graph_html(
     radius: int,
     physics: bool,
     edge_labels: bool,
-) -> str:
-    """按筛选条件生成图谱 HTML。
+) -> List[gv.GraphShard]:
+    """按筛选条件生成图谱 HTML（节点过多时自动分片）。
 
     ``signature`` 只是缓存键的一部分（节点数、边数、数据版本），
     真正的图来自 :func:`~src.graph.runtime.get_graph`；
     数据文件变化时键随之改变，缓存自动失效。
+
+    返回**列表**：规模不大时只有一项（与不分片时的行为完全一致），
+    节点数超过 :data:`~src.graph.visualize.DEFAULT_NODE_BUDGET` 时按分类拆成多份，
+    避免一次性渲染上千节点把页面拖垮。
     """
     graph = runtime.get_graph()
     view = gb.filter_graph(
@@ -61,7 +65,7 @@ def _graph_html(
     active_focus = focus if (focus and view.has_node(focus)) else ""
     if active_focus:
         view = gb.ego_graph(view, active_focus, radius)
-    return gv.build_network_html(
+    return gv.build_sharded_html(
         view,
         focus=active_focus or None,
         height=CANVAS_HEIGHT,
@@ -211,7 +215,7 @@ def _render_canvas(
     display = gb.ego_graph(filtered, active_focus, radius) if active_focus else filtered
 
     with st.spinner("正在生成交互式图谱…"):
-        html = _graph_html(
+        shards = _graph_shards(
             runtime.signature(graph), picked_cats, picked_types, focus, radius, physics, edge_labels
         )
 
@@ -226,7 +230,22 @@ def _render_canvas(
         f"{scope}：展示 {display.number_of_nodes()} 个实体、{display.number_of_edges()} 条关系。"
         "可拖拽平移、滚轮缩放、悬停查看简介；点击节点会高亮其直接邻居并淡化其余节点。"
     )
-    _embed(html, CANVAS_HEIGHT + 20)
+
+    if len(shards) == 1:
+        _embed(shards[0].html, CANVAS_HEIGHT + 20)
+        return
+
+    # 节点数超过规模阈值：按分类分片展示，每片一张独立图谱
+    st.info(
+        f"当前视图有 {display.number_of_nodes()} 个实体，已超过单张图谱的规模阈值"
+        f"（{gv.DEFAULT_NODE_BUDGET} 个），因此按分类拆成 {len(shards)} 片展示。"
+        "每片只画片内的关系，跨片关联请用上方的「聚焦实体」或清空筛选查看全图。"
+    )
+    labels = [f"{shard.label}（{shard.node_count} 实体 / {shard.edge_count} 关系）" for shard in shards]
+    for tab, shard in zip(st.tabs(labels), shards):
+        with tab:
+            st.caption(f"本片大小约 {shard.size_kb:.0f} KB。")
+            _embed(shard.html, CANVAS_HEIGHT + 20)
 
 
 def _render_focus_panel(graph: nx.MultiDiGraph, labels: Dict[str, str], node_ids: List[str]) -> None:

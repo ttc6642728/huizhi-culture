@@ -1,0 +1,206 @@
+{
+  "version": "1.0",
+  "about": "问答评估标注集。每条给出一个真实提问、期望被引用的实体，以及答案中必须出现的关键事实词（都已在 data/entities.json 中逐字核对过）。默认在本地检索式后端上离线评估；用 --live 可换成配置好的真实后端，报告会写明用的是哪一个。",
+  "field_notes": {
+    "expect_citations": "期望被回答引用到的实体 id；命中率即「引用覆盖率」",
+    "required_terms": "答案中必须出现的事实词；本地后端会原样呈现资料，模型后端则须把这些要点写进回答",
+    "must_abstain": "true 表示数据集中确实没有答案，正确行为是明确拒答（不产生任何引用）"
+  },
+  "cases": [
+    {
+      "id": "q001",
+      "question": "宏村位于哪个县？",
+      "expect_citations": ["hongcun", "yixian"],
+      "required_terms": ["黟县"],
+      "tags": ["关系"],
+      "note": "答案落在「宏村 → 位于 → 黟县」"
+    },
+    {
+      "id": "q002",
+      "question": "徽墨制作技艺属于哪一类非物质文化遗产？",
+      "expect_citations": ["huimo"],
+      "required_terms": ["传统技艺"],
+      "tags": ["属性"],
+      "note": ""
+    },
+    {
+      "id": "q003",
+      "question": "马头墙的作用是什么？",
+      "expect_citations": ["matouqiang"],
+      "required_terms": ["封火墙", "火势"],
+      "tags": ["概念"],
+      "note": "防火功能"
+    },
+    {
+      "id": "q004",
+      "question": "承志堂有什么特别之处？",
+      "expect_citations": ["chengzhitang"],
+      "required_terms": ["承志堂"],
+      "tags": ["概念"],
+      "note": "只要求答到该实体本身，不额外指定事实词以免过拟合表达方式"
+    },
+    {
+      "id": "q005",
+      "question": "许国石坊还有什么别称？",
+      "expect_citations": ["xuguo_shifang"],
+      "required_terms": ["八脚牌楼"],
+      "tags": ["属性"],
+      "note": ""
+    },
+    {
+      "id": "q006",
+      "question": "徽州三雕指的是哪三雕？",
+      "expect_citations": ["huizhou_sandiao"],
+      "required_terms": ["砖雕", "石雕", "木雕"],
+      "tags": ["概念"],
+      "note": "三个门类缺一不可"
+    },
+    {
+      "id": "q007",
+      "question": "徽商又被称为什么？",
+      "expect_citations": ["huishang"],
+      "required_terms": ["新安商人"],
+      "tags": ["属性"],
+      "note": "别名"
+    },
+    {
+      "id": "q008",
+      "question": "胡适是哪里人？",
+      "expect_citations": ["hushi", "jixi"],
+      "required_terms": ["绩溪"],
+      "tags": ["关系"],
+      "note": ""
+    },
+    {
+      "id": "q009",
+      "question": "黄山古称什么？",
+      "expect_citations": ["huangshan"],
+      "required_terms": ["黟山"],
+      "tags": ["属性"],
+      "note": ""
+    },
+    {
+      "id": "q010",
+      "question": "胡庆余堂由谁创办？",
+      "expect_citations": ["hu_qingyutang", "hu_xueyan"],
+      "required_terms": ["胡雪岩"],
+      "tags": ["关系"],
+      "note": ""
+    },
+    {
+      "id": "q011",
+      "question": "新安画派有哪些代表人物？",
+      "expect_citations": ["xinan_huapai"],
+      "required_terms": ["渐江", "黄宾虹"],
+      "tags": ["关系"],
+      "note": "创始人渐江与近代代表黄宾虹"
+    },
+    {
+      "id": "q012",
+      "question": "婺源属于徽州吗？",
+      "expect_citations": ["wuyuan", "huizhou_region"],
+      "required_terms": ["徽州"],
+      "tags": ["关系"],
+      "note": ""
+    },
+    {
+      "id": "q013",
+      "question": "程大位写过什么书？",
+      "expect_citations": ["chengdawei", "suanfa_tongzong"],
+      "required_terms": ["算法统宗"],
+      "tags": ["关系"],
+      "note": ""
+    },
+    {
+      "id": "q014",
+      "question": "四水归堂指的是什么？",
+      "expect_citations": ["tianjing"],
+      "required_terms": ["天井"],
+      "tags": ["概念"],
+      "note": ""
+    },
+    {
+      "id": "q015",
+      "question": "万安罗盘产自哪里？",
+      "expect_citations": ["wanan_luopan", "xiuning"],
+      "required_terms": ["休宁"],
+      "tags": ["关系"],
+      "note": ""
+    },
+    {
+      "id": "q016",
+      "question": "徽州鱼灯是什么？",
+      "expect_citations": ["huizhou_yudeng"],
+      "required_terms": ["鱼灯"],
+      "tags": ["概念"],
+      "note": ""
+    },
+    {
+      "id": "q017",
+      "question": "詹天佑有什么称号？",
+      "expect_citations": ["zhantianyou"],
+      "required_terms": ["中国铁路之父"],
+      "tags": ["属性"],
+      "note": "资料中未记具体线路，故只问称号"
+    },
+    {
+      "id": "q018",
+      "question": "歙砚还有别的名字吗？",
+      "expect_citations": ["sheyan"],
+      "required_terms": ["龙尾砚"],
+      "tags": ["属性"],
+      "note": ""
+    },
+    {
+      "id": "q019",
+      "question": "徽墨的主要产地在哪里？",
+      "expect_citations": ["huimo"],
+      "required_terms": ["歙县"],
+      "tags": ["关系"],
+      "note": ""
+    },
+    {
+      "id": "q020",
+      "question": "徽州三雕是哪一批国家级非物质文化遗产？",
+      "expect_citations": ["huizhou_sandiao"],
+      "required_terms": ["第一批"],
+      "tags": ["属性"],
+      "note": ""
+    },
+    {
+      "id": "q021",
+      "question": "程朱理学与哪位思想家关系最密切？",
+      "expect_citations": ["xinan_lixue", "zhuxi"],
+      "required_terms": ["朱熹"],
+      "tags": ["关系"],
+      "note": ""
+    },
+    {
+      "id": "q022",
+      "question": "量子纠缠与超导体有什么区别？",
+      "expect_citations": [],
+      "required_terms": [],
+      "must_abstain": true,
+      "tags": ["拒答"],
+      "note": "与徽州文化无关"
+    },
+    {
+      "id": "q023",
+      "question": "Rust 的所有权机制是怎么工作的？",
+      "expect_citations": [],
+      "required_terms": [],
+      "must_abstain": true,
+      "tags": ["拒答"],
+      "note": ""
+    },
+    {
+      "id": "q024",
+      "question": "Kubernetes 的调度策略是怎样的？",
+      "expect_citations": [],
+      "required_terms": [],
+      "must_abstain": true,
+      "tags": ["拒答"],
+      "note": ""
+    }
+  ]
+}

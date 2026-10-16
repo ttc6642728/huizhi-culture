@@ -233,16 +233,32 @@ def test_verify_warns_when_passages_underused(repo: Repository) -> None:
     assert result.step(wf.STEP_REVISE).status == "skipped"
 
 
-def test_degradation_is_visible_in_checks_and_steps(repo: Repository) -> None:
-    """后端降级必须同时出现在核查表与作答步骤明细里，不能悄悄发生。"""
+def test_config_skip_is_visible_but_not_treated_as_a_fault(repo: Repository) -> None:
+    """「没配的高好后端被跳过」属预期行为：原因必须可见，但不该被判成问题。
+
+    真实场景就是这个样子——没有自建 Dify 的部署里，Dify 每次都会被跳过。
+    若据此把每次运行都标成「完成但存在问题」，就把正常工作说成有问题了。
+    """
     dead = FakeBackend([], available=False, reason="未配置 FAKE_KEY")
     result = make_workflow(repo, [dead, LocalRetrievalBackend()]).run("宏村是什么？")
 
-    assert result.answer_result.degraded is True
-    item = next(c for c in result.checks if c.label == "未发生后端降级")
-    assert item.level == wf.LEVEL_WARN
-    assert "未配置 FAKE_KEY" in item.detail
+    assert result.answer_result.degraded is True, "降级事实本身要保留"
+    item = next(c for c in result.checks if c.label == "未发生后端故障")
+    assert item.level == wf.LEVEL_PASS, "配置性跳过不应算警告"
+    assert "未配置 FAKE_KEY" in item.detail, "原因仍要如实写出，不能藏起来"
     assert "未配置 FAKE_KEY" in result.step(wf.STEP_ANSWER).detail
+    assert result.status == "completed"
+
+
+def test_runtime_backend_failure_is_warned(repo: Repository) -> None:
+    """配了却失败（超时 / 5xx / 空回答）才算问题，必须给出警告。"""
+    broken = FakeBackend([])  # 可用但返回空回答 → 运行时故障
+    result = make_workflow(repo, [broken, LocalRetrievalBackend()]).run("宏村是什么？")
+
+    item = next(c for c in result.checks if c.label == "未发生后端故障")
+    assert item.level == wf.LEVEL_WARN
+    assert "空回答" in item.detail
+    assert result.step(wf.STEP_ANSWER).status == "warn"
     assert result.status == "degraded"
 
 

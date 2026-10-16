@@ -16,7 +16,9 @@ from src.agent.workflow import AgentWorkflow
 from src.data.images import ImageLibrary
 from src.data.loader import load_dataset
 from src.data.repository import Repository
-from src.qa.engine import QAEngine
+from src.eval import dataset as eval_dataset
+from src.eval.runner import EvalReport, evaluate_answers, evaluate_retrieval
+from src.qa.engine import LocalRetrievalBackend, QAEngine
 from src.qa.retriever import Retriever
 
 
@@ -61,4 +63,39 @@ def agent_workflow() -> AgentWorkflow:
     return AgentWorkflow(repository(), engine=qa_engine())
 
 
-__all__ = ["repository", "images", "qa_engine", "agent_workflow"]
+@st.cache_resource(show_spinner=False)
+def eval_report() -> EvalReport:
+    """质量评估报告（在人工标注集上实跑，结果缓存）。
+
+    **固定用本地检索式后端**，因此结果确定、离线可复现——
+    页面上的数字每次刷新都一样，不会因为「这次恰好调了大模型」而漂移。
+    想评估真实模型请用 ``python scripts/evaluate.py --live``。
+
+    Raises:
+        EvalDataError: 标注集缺失或校验不通过。
+    """
+    repo = repository()
+    rs, qs = eval_dataset.load_all(repo)
+    retriever = _retriever()
+    retrieval = evaluate_retrieval(retriever, rs)
+    engine = QAEngine(repo, retriever=retriever, backends=[LocalRetrievalBackend()])
+    return EvalReport(retrieval=retrieval, answers=evaluate_answers(engine, qs))
+
+
+def eval_sets():
+    """返回 ``(检索标注集, 问答标注集)``，供页面展示标注规模与标签分布。
+
+    Raises:
+        EvalDataError: 标注集缺失或校验不通过。
+    """
+    return eval_dataset.load_all(repository())
+
+
+__all__ = [
+    "repository",
+    "images",
+    "qa_engine",
+    "agent_workflow",
+    "eval_report",
+    "eval_sets",
+]

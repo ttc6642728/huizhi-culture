@@ -90,6 +90,35 @@ def collect_reasons(attempts: Sequence[str]) -> List[str]:
     return out
 
 
+#: 降级说明中，属于「这个后端本来就没配」而非「配了但出错」的标记词。
+CONFIG_SKIP_MARKERS: Tuple[str, ...] = ("未配置", "不受支持", "未安装")
+
+
+def is_config_skip(degradation: str) -> bool:
+    """判断一条降级说明是不是「本来就没配」，而不是「配了却失败」。
+
+    两者性质完全不同：
+
+    - **配置性跳过**（没配 Dify、没装 requests）是**预期行为**。在这种部署下
+      「发生了降级」永远为真，若据此判定「完成但存在问题」，等于把正常工作说成有问题；
+    - **运行时故障**（超时、HTTP 5xx、返回空回答）才是真需要人看一眼的。
+
+    因此调用方（如智能体工作流的核查）应据此把两者分开对待。
+    """
+    return any(marker in degradation for marker in CONFIG_SKIP_MARKERS)
+
+
+def split_degradations(
+    degradations: Sequence[str],
+) -> Tuple[List[str], List[str]]:
+    """把降级说明拆成 ``(配置性跳过, 运行时故障)``，各自保持原顺序。"""
+    config_skips: List[str] = []
+    runtime_failures: List[str] = []
+    for item in degradations:
+        (config_skips if is_config_skip(item) else runtime_failures).append(item)
+    return config_skips, runtime_failures
+
+
 __all__ = [
     "QAError",
     "QuestionError",
@@ -101,4 +130,7 @@ __all__ = [
     "AllBackendsFailedError",
     "describe_exception",
     "collect_reasons",
+    "is_config_skip",
+    "split_degradations",
+    "CONFIG_SKIP_MARKERS",
 ]

@@ -15,6 +15,8 @@
 
    - **元数据**：``api.microlink.io`` 的服务端渲染会把目标 URL 抓回来，我们据此间接
      调用 Commons API（``action=query``），拿到文件名、许可与作者；
+     Microlink 免费额度极低（约 15 次/日），额度用尽后自动改用
+     ``api.allorigins.win/raw``（另一个原样回传正文的中转，不消耗 Microlink 额度）；
    - **图片字节**：``wsrv.nl``（images.weserv.nl）是一个开源图片代理/CDN，
      支持 ``?url=upload.wikimedia.org/...`` 直接回源并缩放。
 
@@ -53,11 +55,36 @@ CREDITS = IMAGES_DIR / "CREDITS.md"
 API = "https://commons.wikimedia.org/w/api.php"
 USER_AGENT = "HuizhouCultureExplorer/1.0 (course project; contact: local)"
 
-#: 元数据中转：Microlink 服务端会抓取目标 URL 并把正文回传，用于间接访问 Commons API。
+#: 元数据中转（首选）：Microlink 服务端会抓取目标 URL 并把正文回传，用于间接访问 Commons API。
+#: 免费额度极低（约 15 次/日），额度用尽后返回 429，此时自动改用 ALLORIGINS。
 MICROLINK = "https://api.microlink.io/"
+
+#: 元数据中转（备用）：allorigins 的 ``/raw`` 端点原样回传目标 URL 的正文，
+#: 且不消耗 Microlink 的日额度，适合需要检索多个实体时使用。
+ALLORIGINS = "https://api.allorigins.win/raw?url="
 
 #: 图片中转：wsrv.nl（images.weserv.nl），开源图片代理/CDN，支持回源 upload.wikimedia.org。
 WSRV = "https://wsrv.nl/"
+
+#: 元数据中转池。Commons API 必须经中转访问（本机对 wikimedia 全域存在 DNS 污染）。
+#: 这些免费中转**都会间歇性限流**（常见 429 / 500 / 503 / 522），
+#: 因此这里维护一个池：按「近期成功率 + 冷却状态」轮换，失败的中转让位给其它中转，
+#: 冷却结束再回来试——单靠任何一家都不足以连续取回十几个实体的元数据。
+#: ``{q}`` 会被替换为百分号编码后的目标 URL。
+RELAY_TEMPLATES: Tuple[Tuple[str, str], ...] = (
+    # Microlink：服务端抓取后把正文包成 JSON，需要额外解一层
+    ("microlink", MICROLINK + "?url={q}&meta=false&data.body.selector=body&data.body.type=text"),
+    ("allorigins-raw", ALLORIGINS + "{q}"),
+    ("allorigins-get", "https://api.allorigins.win/get?url={q}"),
+    ("cors-lol", "https://api.cors.lol/?url={q}"),
+    ("codetabs", "https://api.codetabs.com/v1/proxy?quest={q}"),
+)
+
+#: 单次运行内每个中转的最近表现：{名称: {"ok": int, "fail": int, "until": float}}
+_RELAY_STATE: Dict[str, Dict[str, float]] = {}
+
+#: 中转连续失败后的冷却上限（秒）
+RELAY_MAX_COOLDOWN = 180.0
 
 #: 目标缩略图宽度（像素）。1000 px 在卡片与详情页都足够清晰，且体积可控。
 THUMB_WIDTH = 1000
@@ -98,18 +125,39 @@ TARGETS: Tuple[Tuple[str, str, str, str, str], ...] = (
     ("huipai_architecture", "Huizhou architecture", r"huizhou|徽派|徽州", r"guangdong|惠州|广东", "徽派建筑粉墙黛瓦"),
     ("matouqiang", "Matouqiang", r"matouqiang|马头墙|horsehead|horse head", r"", "马头墙"),
     ("huizhou_minju", "Huizhou house", r"huizhou|徽州民居", r"guangdong|惠州|广东", "徽州民居天井院"),
-    ("huizhou_paifang", "paifang Anhui", r"paifang|牌坊", r"", "徽州牌坊"),
-    ("huizhou_citang", "ancestral hall Huizhou", r"ancestral (hall|temple)|祠堂|宗祠", r"", "徽州祠堂"),
+    # 「徽州牌坊」「徽州祠堂」是**带地域的建筑类型名**，最容易踩到同名异地的坑：
+    # 曾经真的下错过——「牌坊」命中的是白云寺的山门，「祠堂」命中的是无锡惠山祠堂。
+    # 因此这两条的必含词用 ` & ` 连成两段（` & ` 表示「同时满足」）：
+    # 既要是牌坊/祠堂，又要能看出在徽州一府六县境内。
+    (
+        "huizhou_paifang",
+        "paifang Anhui",
+        r"paifang|牌坊 & huizhou|徽州|anhui|安徽|tangyue|棠樾|shexian|歙县|yixian|黟县"
+        r"|xiuning|休宁|jixi|绩溪|qimen|祁门|wuyuan|婺源|xidi|西递|hongcun|宏村",
+        r"baiyun|白云|temple|寺|庙",
+        "徽州牌坊",
+    ),
+    (
+        "huizhou_citang",
+        "ancestral hall Huizhou",
+        r"ancestral (hall|temple)|祠堂|宗祠 & huizhou|徽州|anhui|安徽|shexian|歙县|yixian|黟县"
+        r"|xiuning|休宁|jixi|绩溪|qimen|祁门|wuyuan|婺源|xidi|西递|hongcun|宏村|nanping|南屏"
+        r"|chengkan|呈坎",
+        r"wuxi|无锡|huishan|惠山",
+        "徽州祠堂",
+    ),
     ("huangshan", "Huangshan", r"huangshan|黄山", r"", "黄山花岗岩峰林"),
     ("xinanjiang", "Xin'an River", r"xin.?an river|新安江", r"genealogy|族谱|family", "新安江山水"),
     ("qiyunshan", "Qiyun", r"qiyun|齐云", r"", "齐云山丹霞与道观"),
     ("huimo", "Huizhou ink", r"ink.?stick|huizhou ink|徽墨", r"", "徽墨"),
     ("sheyan", "She inkstone", r"inkstone|歙砚", r"", "歙砚"),
     ("huizhou_sandiao", "Huizhou wood carving", r"carving|雕", r"", "徽州三雕"),
-    ("huiju", "Hui opera", r"hui opera|徽剧", r"", "徽剧"),
+    # 「徽剧」的通行写法还有「徽戏」——曾因必含词只写「徽剧」而把一个确实相关的候选
+    # （绩溪家朋的徽戏）挡在门外，故把两种写法都收进来。
+    ("huiju", "Hui opera", r"hui opera|徽剧|徽戏", r"taiwan|台灣|korea|韩国", "徽剧"),
     ("zhuxi", "Zhu Xi", r"zhu xi|朱熹", r"", "朱熹画像"),
     ("hushi", "Hu Shih", r"hu shih|hushi|胡适", r"father|胡传|hu chuan", "胡适肖像"),
-    ("jianjiang", "Jianjiang", r"jianjiang|渐江|弘仁", r"", "渐江山水画"),
+    ("jianjiang", "Jianjiang", r"jianjiang|渐江|弘仁|hongren", r"delta|aerial|guangdong|广东|flight|airport", "渐江山水画"),
     ("huangbinhong", "Huang Binhong", r"binhong|宾虹", r"tuscan|voogd", "黄宾虹山水画"),
     ("hu_qingyutang", "Hu Qing Yu Tang", r"qing.?yu", r"", "胡庆余堂"),
     ("huizhou_yudeng", "fish lantern", r"fish.?lantern|鱼灯", r"", "徽州鱼灯"),
@@ -118,6 +166,15 @@ TARGETS: Tuple[Tuple[str, str, str, str, str], ...] = (
 #: 画幅比例限制：过宽或过窄的图在卡片与详情页都难以排版。
 MIN_ASPECT = 0.5
 MAX_ASPECT = 2.1
+
+#: 允许的图片格式。
+SUPPORTED_MIMES: Tuple[str, ...] = ("image/jpeg", "image/png", "image/svg+xml", "image/tiff")
+
+#: 把关条件索引：``{实体 id: (必含词组, 排除词)}``。
+#: 必含词组是**全部都要命中**（` & ` 分段）；排除词命中任何一个即淘汰。
+TARGET_SPECS: Dict[str, Tuple[Tuple[str, ...], Optional[str]]] = {
+    row[0]: (tuple(row[2].split(" & ")), row[3] or None) for row in TARGETS
+}
 
 
 # --------------------------------------------------------------------------
@@ -171,6 +228,20 @@ def _attempt(transport: str, url: str, timeout: int) -> bytes:
     raise RuntimeError(f"未知通道：{transport}")
 
 
+def _probe_urls() -> List[str]:
+    """用于探测联网通道的候选 URL（任一可用即认为该通道可用）。
+
+    直接对**中转池里的每一个中转**发一次最小请求（Commons ``siteinfo``）：
+    这样探测的既是「本机到中转是否通」，也是「该中转此刻能否到 Commons」——
+    免费中转会轮流限流，只探测其中一家会误判整条链路不可用。
+    """
+    siteinfo = API + "?" + urllib.parse.urlencode(
+        {"action": "query", "format": "json", "meta": "siteinfo", "siprop": "general"}
+    )
+    quoted = urllib.parse.quote(siteinfo, safe="")
+    return [template.replace("{q}", quoted) for _, template in RELAY_TEMPLATES]
+
+
 def resolve_transport() -> str:
     """探测出一个可用的联网通道并固定使用。
 
@@ -178,25 +249,23 @@ def resolve_transport() -> str:
     有的会按客户端拦截），因此这里只探测一次，之后所有请求都复用，
     避免每个请求都因为重试失败通道而拖慢整体进度。
     """
-    probe = MICROLINK + "?" + urllib.parse.urlencode(
-        {"url": "https://example.com/", "meta": "false"}
-    )
     errors: List[str] = []
     for transport in _TRANSPORTS:
         if _PROBED.get(transport) is False:
             continue
-        try:
-            raw = _attempt(transport, probe, 30)
-            json.loads(raw.decode("utf-8"))
-        except Exception as exc:  # noqa: BLE001 - 需要汇总多种网络/解析异常
-            _PROBED[transport] = False
-            errors.append(f"{transport}: {type(exc).__name__} {str(exc)[:70]}")
-            continue
-        _PROBED[transport] = True
-        _TRANSPORTS.remove(transport)
-        _TRANSPORTS.insert(0, transport)
-        print(f"[网络] 使用通道：{transport}（经 microlink / wsrv 中转）")
-        return transport
+        for probe in _probe_urls():
+            try:
+                raw = _attempt(transport, probe, 30)
+                json.loads(raw.decode("utf-8"))
+            except Exception as exc:  # noqa: BLE001 - 需要汇总多种网络/解析异常
+                errors.append(f"{transport}: {type(exc).__name__} {str(exc)[:70]}")
+                continue
+            _PROBED[transport] = True
+            _TRANSPORTS.remove(transport)
+            _TRANSPORTS.insert(0, transport)
+            print(f"[网络] 使用通道：{transport}（经 microlink / allorigins / wsrv 中转）")
+            return transport
+        _PROBED[transport] = False
     raise RuntimeError("没有任何可用的联网通道：\n  " + "\n  ".join(errors))
 
 
@@ -221,41 +290,111 @@ def _get(url: str, timeout: int = 40, retries: int = 2) -> bytes:
     raise RuntimeError(f"无法访问 {url}\n  " + "\n  ".join(errors[-6:]))
 
 
-def _via_microlink(target_url: str) -> Dict:
-    """经 Microlink 服务端抓取 ``target_url``，并把返回的 ``<pre>`` 正文解析为 JSON。
 
-    Commons API 返回 ``application/json``，Microlink 会把它包在 ``<pre>`` 里回传，
-    因此这里先取出 ``data.body``，再用正则取出 ``<pre>`` 内容并反转义。
-    """
-    proxy = MICROLINK + "?" + urllib.parse.urlencode(
-        {
-            "url": target_url,
-            "meta": "false",
-            "data.body.selector": "body",
-            "data.body.type": "text",
-        }
+# --------------------------------------------------------------------------
+# 中转池调度
+# --------------------------------------------------------------------------
+
+
+def _relay_state(name: str) -> Dict[str, float]:
+    return _RELAY_STATE.setdefault(name, {"ok": 0.0, "fail": 0.0, "until": 0.0})
+
+
+def _relay_order() -> List[str]:
+    """按「不在冷却 → 成功多 → 失败少」排序，返回本轮要试的中转名。"""
+    now = time.time()
+    names = [name for name, _ in RELAY_TEMPLATES]
+    return sorted(
+        names,
+        key=lambda n: (
+            _relay_state(n)["until"] > now,
+            -_relay_state(n)["ok"],
+            _relay_state(n)["fail"],
+        ),
     )
-    raw = _get(proxy, timeout=70)
+
+
+def _relay_ok(name: str) -> None:
+    state = _relay_state(name)
+    state["ok"] += 1
+    state["fail"] = 0
+    state["until"] = 0.0
+
+
+def _relay_failed(name: str) -> None:
+    state = _relay_state(name)
+    state["fail"] += 1
+    # 指数退避：连撞两次就冷一会儿，避免把额度浪费在已经挂掉的中转上
+    state["until"] = time.time() + min(RELAY_MAX_COOLDOWN, 15.0 * (2 ** (state["fail"] - 1)))
+
+
+def _relay_fetch(name: str, proxy: str) -> Dict:
+    """经指定中转取回内容并解析成 dict。"""
+    text = _get(proxy, timeout=70).decode("utf-8", errors="replace").strip()
+
+    if name == "microlink":
+        # Microlink 把正文包在 JSON 里，正文本身又包在 <pre> 中
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"Microlink 返回的不是 JSON：{text[:160]!r}") from exc
+        if payload.get("status") != "success":
+            raise RuntimeError(f"Microlink 代理失败：{str(payload)[:160]}")
+        body = str(payload.get("data", {}).get("body", ""))
+        match = re.search(r"<pre[^>]*>(.*)</pre>", body, re.S)
+        text = html.unescape(match.group(1)) if match else body
+
+    elif name == "allorigins-get":
+        # /get 端点把正文塞进 {"contents": "..."} 包装里
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"allorigins/get 返回的不是 JSON：{text[:160]!r}") from exc
+        if not isinstance(payload, dict) or "contents" not in payload:
+            raise RuntimeError(f"allorigins/get 响应缺少 contents：{str(payload)[:160]}")
+        text = str(payload.get("contents") or "")
+
     try:
-        payload = json.loads(raw.decode("utf-8"))
+        data = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Microlink 返回的不是 JSON：{raw[:200]!r}") from exc
-    if payload.get("status") != "success":
-        raise RuntimeError(f"Microlink 代理失败：{str(payload)[:200]}")
-    body = str(payload.get("data", {}).get("body", ""))
-    match = re.search(r"<pre[^>]*>(.*)</pre>", body, re.S)
-    inner = html.unescape(match.group(1)) if match else body
-    try:
-        return json.loads(inner)
-    except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Commons API 返回的不是 JSON：{inner[:200]!r}") from exc
+        raise RuntimeError(f"Commons API 返回的不是 JSON：{text[:160]!r}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Commons API 返回的顶层结构不是对象：{text[:160]!r}")
+    if "error" in data and "query" not in data:
+        raise RuntimeError(f"Commons API 报错：{str(data['error'])[:160]}")
+    return data
 
 
 def _api(params: Dict[str, str]) -> Dict:
-    """调用 Commons API（经 Microlink 中转）并解析 JSON。"""
+    """调用 Commons API 并解析 JSON，必要时在中转池里轮换。
+
+    每个中转失败后进入冷却，下一次请求直接用其它中转；两轮都没成功才放弃。
+    这样即使某一家中转正在限流，整批抓取也不会被它卡住。
+    """
     params = {"action": "query", "format": "json", **params}
     url = API + "?" + urllib.parse.urlencode(params)
-    return _via_microlink(url)
+    quoted = urllib.parse.quote(url, safe="")
+    templates = dict(RELAY_TEMPLATES)
+
+    errors: List[str] = []
+    for round_index in range(2):
+        for name in _relay_order():
+            if _relay_state(name)["until"] > time.time():
+                continue
+            try:
+                data = _relay_fetch(name, templates[name].replace("{q}", quoted))
+            except Exception as exc:  # noqa: BLE001 - 需要汇总多种中转异常
+                _relay_failed(name)
+                errors.append(f"{name}: {type(exc).__name__} {str(exc)[:80]}")
+                continue
+            _relay_ok(name)
+            return data
+        if round_index == 0:
+            # 全部中转都在冷却：等最短的那个解冻后再试一轮
+            waits = [_relay_state(n)["until"] - time.time() for n in templates]
+            time.sleep(max(2.0, min(30.0, min(waits) if waits else 5.0)))
+
+    raise RuntimeError(f"所有元数据中转都不可用（{url[:80]}…）\n  " + "\n  ".join(errors[-6:]))
 
 
 def _via_wsrv(image_url: str, width: int = THUMB_WIDTH, retries: int = 4) -> bytes:
@@ -395,18 +534,70 @@ def search_candidates(query: str, limit: int = 8) -> List[Dict]:
     return result
 
 
+def target_gate(
+    entity_id: str,
+    *,
+    title: str = "",
+    file_name: str = "",
+    description: str = "",
+    credit: str = "",
+) -> bool:
+    """相关性把关（纯函数，不发请求）。
+
+    规则来自 ``TARGET_SPECS``：``must`` 里的每一段都必须命中（分段用 `` & `` 表示「与」），
+    任一 ``exclude`` 命中即淘汰。把这条规则抽成纯函数，是为了让它**可被测试断言**——
+    清单里每一张图都应该能通过它所属实体的把关（见
+    `tests/test_image_library.py::test_manifest_entries_pass_their_own_relevance_gate`）。
+    """
+    spec = TARGET_SPECS.get(entity_id)
+    if spec is None:
+        return False
+    musts, exclude = spec
+    haystack = " ".join([title, file_name, description, credit])
+    if exclude and re.search(exclude, haystack, re.I):
+        return False
+    return all(re.search(pattern, haystack, re.I) for pattern in musts)
+
+
+def candidate_rejection(cand: Dict) -> Optional[str]:
+    """候选项自身的硬性缺陷；返回原因表示应跳过，返回 ``None`` 表示可用。
+
+    纯函数，与网络无关，便于离线测试。规则集中于此，是为了让
+    「什么样的候选才有资格进清单」这件事有唯一定义。
+    """
+    if not cand.get("free"):
+        return f"许可不合规（{cand.get('license') or '未知'}）"
+    if cand.get("mime") not in SUPPORTED_MIMES:
+        return f"格式不支持（{cand.get('mime')}）"
+    width = int(cand.get("width", 0) or 0)
+    height = int(cand.get("height", 0) or 0)
+    if width <= 0 or height <= 0:
+        return "尺寸信息缺失"
+    aspect = width / height
+    if not (MIN_ASPECT <= aspect <= MAX_ASPECT):
+        return f"画幅比例不合适（{width}×{height}，{aspect:.2f}）"
+    if min(width, height) < 600:
+        return f"分辨率过低（{width}×{height}）"
+    # 没有作者就无从署名。Commons 上确实存在只有许可、没有 Artist/Credit 的老照片，
+    # 这类候选一律不收：清单的长期约束是「每张图都能署出作者」
+    # （`test_real_manifest_entries_are_fully_attributed`），
+    # 与其写一条署不出作者的图片，不如不放这张图。
+    if not str(cand.get("artist", "")).strip():
+        return "Commons 未登记作者，无法署名"
+    return None
+
+
 def pick_candidate(
     entity_id: str,
     query: str,
-    must_match: str,
-    exclude: str,
     used_titles: set,
 ) -> Tuple[Optional[Dict], List[str]]:
-    """挑选一张合格图片；返回 (候选, 跳过原因列表)。"""
-    reasons: List[str] = []
-    pattern = re.compile(must_match, re.I)
-    reject = re.compile(exclude, re.I) if exclude else None
+    """挑选一张合格图片；返回 (候选, 跳过原因列表)。
 
+    把关条件从 ``TARGET_SPECS[entity_id]`` 取，不再由调用方另传一份 ——
+    避免「调用的正则」与「实体真正的把关标准」两份定义漂移。
+    """
+    reasons: List[str] = []
     try:
         candidates = search_candidates(query)
     except RuntimeError as exc:
@@ -419,32 +610,18 @@ def pick_candidate(
         if cand["file_name"] in used_titles:
             reasons.append(f"已用于其它实体：{cand['file_name'][:40]}")
             continue
-        if not cand["free"]:
-            reasons.append(f"许可不合规（{cand['license'] or '未知'}）：{cand['file_name'][:40]}")
+        defect = candidate_rejection(cand)
+        if defect:
+            reasons.append(f"{defect}：{cand['file_name'][:40]}")
             continue
-        if cand["mime"] not in ("image/jpeg", "image/png", "image/svg+xml", "image/tiff"):
-            reasons.append(f"格式不支持（{cand['mime']}）：{cand['file_name'][:40]}")
-            continue
-        if cand["height"] <= 0:
-            reasons.append(f"尺寸信息缺失：{cand['file_name'][:40]}")
-            continue
-        aspect = cand["width"] / cand["height"]
-        if not (MIN_ASPECT <= aspect <= MAX_ASPECT):
-            reasons.append(
-                f"画幅比例不合适（{cand['width']}×{cand['height']}，{aspect:.2f}）："
-                f"{cand['file_name'][:36]}"
-            )
-            continue
-        if min(cand["width"], cand["height"]) < 600:
-            reasons.append(f"分辨率过低（{cand['width']}×{cand['height']}）：{cand['file_name'][:40]}")
-            continue
-        haystack = " ".join(
-            [cand["title"], cand["file_name"], cand["description"], cand["credit"]]
+        haystack_ok = target_gate(
+            entity_id,
+            title=cand["title"],
+            file_name=cand["file_name"],
+            description=cand["description"],
+            credit=cand["credit"],
         )
-        if reject and reject.search(haystack):
-            reasons.append(f"命中排除词：{cand['file_name'][:40]}")
-            continue
-        if not pattern.search(haystack):
+        if not haystack_ok:
             reasons.append(
                 f"与实体无关：{cand['file_name'][:36]}（{cand['description'][:40]}）"
             )
@@ -484,6 +661,9 @@ def write_credits(entries: List[Dict], failed: List[Tuple[str, List[str]]]) -> N
         "且均为自由授权（CC0 / CC BY / CC BY-SA / 公有领域 / GFDL）。",
         "下表逐条登记来源，可点击核对原始页面。",
         "",
+        "图片能进这份清单，要同时满足三条门槛：**许可自由**、**与实体确实相关**、",
+        "**Commons 上登记了作者**。把关规则与测试见 `scripts/fetch_images.py` 与本目录 `README.md`。",
+        "",
         "> 说明：以下图片按原许可要求署名使用；如某张图片被替换或移除，",
         "> 请同步更新本文件与 `manifest.json`。",
         "",
@@ -508,8 +688,10 @@ def write_credits(entries: List[Dict], failed: List[Tuple[str, List[str]]]) -> N
             "",
             "## 未取得图片的实体",
             "",
-            "以下实体在 Commons 上未找到同时满足「与实体相关」与「许可明确自由」的图片，",
+            "以下实体在**最近一次抓取**中未取得图片：找不到同时满足「与实体相关」",
+            "「许可明确自由」与「Commons 已登记作者」三条的候选。",
             "因此**不放图**，界面会自动回退为纯排版展示（不以占位图充数）。",
+            "（下列原因对应当时那一次运行；把关规则若有调整，重跑即可刷新。）",
             "",
         ]
         for entity_id, reasons in failed:
@@ -728,7 +910,7 @@ def main() -> int:
 
     for entity_id, query, must_match, exclude, caption in targets:
         label = name_of.get(entity_id, entity_id)
-        cand, reasons = pick_candidate(entity_id, query, must_match, exclude, used_titles)
+        cand, reasons = pick_candidate(entity_id, query, used_titles)
 
         if cand is None:
             print(f"[×] {label:<10} 未取得图片")

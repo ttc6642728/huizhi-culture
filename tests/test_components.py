@@ -102,3 +102,22 @@ def test_table_html_escapes_headers_and_handles_empty_rows() -> None:
 def test_group_title_and_count_line_escape() -> None:
     assert "&lt;x&gt;" in ui.group_title("<x>")
     assert "&lt;y&gt;" in ui.count_line("<y>")
+
+
+def test_metric_grid_renders_labels_values_and_notes() -> None:
+    html = ui.metric_grid([("Hit@5", "1.000", "相关项出现在前 K 名"), ("MRR", "1.000", "")])
+    assert "hz-metrics" in html
+    assert html.count('class="hz-metric"') == 2
+    assert "Hit@5" in html and "1.000" in html
+    assert "相关项出现在前 K 名" in html
+    assert "hz-metric__note" not in html.split("hz-metric\">")[2], "空说明不应渲染出说明节点"
+
+
+def test_metric_grid_escapes_untrusted_text() -> None:
+    html = ui.metric_grid([("<b>", "<i>", "<u>")])
+    assert "<b>" not in html and "<i>" not in html and "<u>" not in html
+    assert "&lt;b&gt;" in html
+
+
+def test_metric_grid_handles_empty_input() -> None:
+    assert ui.metric_grid([]) == '<div class="hz-metrics"></div>'

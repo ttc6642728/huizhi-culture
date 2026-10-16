@@ -876,6 +876,37 @@ input, textarea, [data-baseweb="select"] > div {{
 .hz-lv--warn {{ border-color: {c['warn']}; background: {c['warn_wash']}; color: {c['warn']}; }}
 .hz-lv--fail {{ border-color: {c['error']}; background: {c['error_wash']}; color: {c['error']}; }}
 
+/* ===== 质量评估：指标格子 ===== */
+.hz-metrics {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+    gap: .6rem;
+    margin: .2rem 0 .6rem;
+}}
+.hz-metric {{
+    border: 1px solid {c['line']};
+    border-radius: 10px;
+    background: {c['bg_soft']};
+    padding: .6rem .7rem;
+}}
+.hz-metric__label {{
+    font-size: .74rem;
+    color: {c['ink_mute']};
+    letter-spacing: .04em;
+}}
+.hz-metric__value {{
+    font-size: 1.5rem;
+    font-weight: 600;
+    line-height: 1.25;
+    color: {c['ink']};
+    font-variant-numeric: tabular-nums;
+}}
+.hz-metric__note {{
+    font-size: .7rem;
+    color: {c['ink_mute']};
+    margin-top: .1rem;
+}}
+
 /* 页脚 */
 .hz-footer {{
     margin-top: 3rem;

@@ -1,0 +1,55 @@
+# section titles (in order)
+- 项目概览
+- 平台一览
+- 可追踪智能体工作流
+- 质量评估
+- 标注集
+- 按标签分组（@<n>）
+- 架构与模块职责
+- 模块划分（就绪状态由程序实时探测）
+- 开发原则
+
+# style classes used by this page (sorted)
+- hz-card
+- hz-card--flat
+- hz-crumb
+- hz-flow
+- hz-footer
+- hz-hero
+- hz-kv
+- hz-metric
+- hz-metrics
+- hz-note
+- hz-note--ok
+- hz-rank
+- hz-section-sub
+- hz-section-title
+- hz-tag
+- hz-tag--accent
+
+# widgets (sorted)
+- button|about_go_ask|打开 AI 问答
+- button|about_go_explore|浏览文化百科
+- button|about_go_graph|查看知识图谱
+- button|nav_about|关于项目
+- button|nav_ask|AI 问答
+- button|nav_explore|文化百科
+- button|nav_graph|知识图谱
+- button|nav_home|文化探索
+- button|wf_clear|清空
+- button|wf_ex_0|徽州是什么？
+- button|wf_ex_1|徽州与休宁有什么关系？
+- button|wf_ex_2|徽商是什么？
+- button|wf_ex_3|徽商与徽州有什么关系？
+- button|wf_run|运行工作流
+- text_area|wf_input|工作流输入
+
+# sidebar nav (sorted)
+- nav_about|关于项目
+- nav_ask|AI 问答
+- nav_explore|文化百科
+- nav_graph|知识图谱
+- nav_home|文化探索
+
+# content markdown blocks
+- 27

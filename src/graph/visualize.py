@@ -20,7 +20,8 @@ from __future__ import annotations
 import html as _html
 import json
 import re
-from typing import Dict, Iterable, List, Mapping, Optional, Sequence
+from dataclasses import dataclass
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import networkx as nx
 from pyvis.network import Network
@@ -329,6 +330,125 @@ def build_network_html(
     return tighten_layout(strip_external_resources(net.generate_html()))
 
 
+# --------------------------------------------------------------------------
+# 规模守卫：节点过多时按分类分片
+# --------------------------------------------------------------------------
+
+#: 单份 HTML 建议承载的节点上限。
+#:
+#: 实测（96 节点 / 180 边）：产物约 830 KB，一次性渲染流畅。
+#: 节点数上千时单份产物会到十几 MB、首屏明显卡顿，此时按分类拆成多份更实际。
+#: 阈值取 400：当前数据规模（96）远低于它，因此默认行为与不引入本功能时完全一致。
+DEFAULT_NODE_BUDGET = 400
+
+
+@dataclass(frozen=True)
+class GraphShard:
+    """一份图谱 HTML 及其覆盖范围。"""
+
+    label: str
+    node_count: int
+    edge_count: int
+    html: str
+
+    @property
+    def size_kb(self) -> float:
+        return len(self.html.encode("utf-8")) / 1024
+
+
+def shard_graph(
+    graph: nx.MultiDiGraph,
+    budget: int = DEFAULT_NODE_BUDGET,
+    *,
+    category_attr: str = "category_name",
+) -> List[Tuple[str, nx.MultiDiGraph]]:
+    """把图按分类拆成每片不超过 ``budget`` 个节点的子图。
+
+    规则：
+
+    1. 节点数不超过 ``budget`` 时**原样返回一张全图**（当前 96 节点的实际路径）；
+    2. 超过时按分类打包（分类按节点数降序，保证结果可复现），凑满一片就另起一片；
+    3. 单个分类自身超过 ``budget`` 时，按度数降序切成若干块——
+       度数高的实体通常是与其它分类的枢纽，单独成片更便于查看。
+
+    **注意**：分片视图只展示片内的关系；跨片的关系会在片间边界处不可见，
+    需要查看跨片关联时应使用「聚焦实体」视图或全图视图。
+    与其把跨片边画成断头线让人误判，不如明确不画并在界面上说明。
+    """
+    count = graph.number_of_nodes()
+    if count == 0:
+        return []
+    if count <= budget:
+        return [("全图", graph)]
+
+    groups: Dict[str, List[str]] = {}
+    for node_id, data in graph.nodes(data=True):
+        key = str(data.get(category_attr) or data.get("category") or "未分类")
+        groups.setdefault(key, []).append(node_id)
+
+    # 分片结果可复现：分类按「节点数降序 + 名称」排序，片内节点按 id 排序
+    ordered = sorted(groups.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+
+    shards: List[Tuple[str, List[str]]] = []
+    pending: List[str] = []
+    pending_labels: List[str] = []
+
+    def flush() -> None:
+        if pending:
+            shards.append((" + ".join(pending_labels), list(pending)))
+            pending.clear()
+            pending_labels.clear()
+
+    for label, nodes in ordered:
+        if len(nodes) > budget:
+            flush()
+            ranked = sorted(nodes, key=lambda n: (-graph.degree(n), n))
+            chunks = [ranked[i : i + budget] for i in range(0, len(ranked), budget)]
+            for index, chunk in enumerate(chunks, start=1):
+                shards.append((f"{label}（{index}/{len(chunks)}）", chunk))
+            continue
+
+        if len(pending) + len(nodes) > budget:
+            flush()
+        pending.extend(nodes)
+        pending_labels.append(label)
+    flush()
+
+    out: List[Tuple[str, nx.MultiDiGraph]] = []
+    for label, nodes in shards:
+        sub = graph.subgraph(nodes).copy()
+        out.append((label, sub))
+    return out
+
+
+def build_sharded_html(
+    graph: nx.MultiDiGraph,
+    *,
+    budget: int = DEFAULT_NODE_BUDGET,
+    focus: Optional[str] = None,
+    **kwargs: object,
+) -> List[GraphShard]:
+    """按规模守卫渲染图谱：小图一份，大图多份。
+
+    ``focus`` 只在包含该节点的分片里生效，其余分片不传，
+    免得在不相干的片里画出一个「重点」。
+    """
+    shards = shard_graph(graph, budget)
+    out: List[GraphShard] = []
+    for label, sub in shards:
+        shard_focus = focus if (focus and sub.has_node(focus)) else None
+        html = build_network_html(sub, focus=shard_focus, **kwargs)  # type: ignore[arg-type]
+        out.append(
+            GraphShard(
+                label=label,
+                node_count=sub.number_of_nodes(),
+                edge_count=sub.number_of_edges(),
+                html=html,
+            )
+        )
+    return out
+
+
 def build_path_html(
     graph: nx.MultiDiGraph,
     node_ids: Sequence[str],
@@ -422,6 +542,10 @@ __all__ = [
     "node_size",
     "build_network_html",
     "build_path_html",
+    "shard_graph",
+    "build_sharded_html",
+    "GraphShard",
+    "DEFAULT_NODE_BUDGET",
     "graph_legend_html",
     "path_chain_html",
 ]

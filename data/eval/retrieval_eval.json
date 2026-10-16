@@ -1,0 +1,334 @@
+{
+  "version": "1.0",
+  "about": "检索评估标注集。每条标注给出一个查询与「人工判定应当被检索到的实体」。标注独立于检索器的实际输出：先定答案，再跑评估，避免拿结果反推标准。",
+  "grading": {
+    "3": "直接答案——该实体本身就是这条查询要问的对象",
+    "2": "高度相关——与查询主题直接相关，可作补充依据",
+    "1": "弱相关——同族/同域，回答时可参考但非必需",
+    "0": "不相关（不写入标注，作为隐含的负例）"
+  },
+  "tags": {
+    "专名": "查询词就是实体名称",
+    "别名": "查询词是实体的别名或俗称，考察别名召回",
+    "关系": "问实体之间的关系或归属，答案为「主实体 + 对象实体」",
+    "属性": "问实体的某项属性或旧称",
+    "概念": "问一类事物的内涵或包含范围，通常有多个相关实体",
+    "负样本": "数据集中确实没有相关知识，检索器应返回空列表",
+    "词面重叠": "负样本中的某个词与语料里的实体字面重叠，属于已知的困难样本"
+  },
+  "cases": [
+    {
+      "id": "r001",
+      "query": "宏村",
+      "relevant": { "hongcun": 3, "yixian": 1 },
+      "tags": ["专名"],
+      "note": "黟县为宏村所属县，作弱相关"
+    },
+    {
+      "id": "r002",
+      "query": "徽墨",
+      "relevant": { "huimo": 3, "sheyan": 1, "huibi": 1 },
+      "tags": ["专名"],
+      "note": "徽墨为本体；歙砚、徽笔同属徽州文房工艺，弱相关"
+    },
+    {
+      "id": "r003",
+      "query": "马头墙",
+      "relevant": { "matouqiang": 3, "huipai_architecture": 2 },
+      "tags": ["专名"],
+      "note": "马头墙是徽派建筑的构件"
+    },
+    {
+      "id": "r004",
+      "query": "承志堂",
+      "relevant": { "chengzhitang": 3, "hongcun": 1 },
+      "tags": ["专名"],
+      "note": "承志堂位于宏村"
+    },
+    {
+      "id": "r005",
+      "query": "许国石坊",
+      "relevant": { "xuguo_shifang": 3, "huizhou_paifang": 2 },
+      "tags": ["专名"],
+      "note": "许国石坊是徽州牌坊的代表"
+    },
+    {
+      "id": "r006",
+      "query": "万安罗盘",
+      "relevant": { "wanan_luopan": 3, "xiuning": 1 },
+      "tags": ["专名"],
+      "note": "万安罗盘出产于休宁万安"
+    },
+    {
+      "id": "r007",
+      "query": "紫阳书院",
+      "relevant": { "ziyang_shuyuan": 3, "zhushan_shuyuan": 1, "zhuxi": 1 },
+      "tags": ["专名"],
+      "note": "紫阳书院与朱熹、竹山书院（同属徽州书院）相关"
+    },
+    {
+      "id": "r008",
+      "query": "徽州府志",
+      "relevant": { "huizhou_fuzhi": 3 },
+      "tags": ["专名"],
+      "note": ""
+    },
+    {
+      "id": "r009",
+      "query": "石耳炖土鸡",
+      "relevant": { "shier_dun_jitang": 3, "huicai": 2 },
+      "tags": ["专名"],
+      "note": "该菜属徽菜"
+    },
+    {
+      "id": "r010",
+      "query": "清懿堂",
+      "relevant": { "qingyitang": 3, "huizhou_citang": 2, "tangyue": 1 },
+      "tags": ["专名"],
+      "note": "清懿堂是棠樾的女祠"
+    },
+    {
+      "id": "r011",
+      "query": "弘仁",
+      "relevant": { "jianjiang": 3, "xinan_huapai": 2 },
+      "tags": ["别名"],
+      "note": "弘仁即渐江，新安画派创始人"
+    },
+    {
+      "id": "r012",
+      "query": "朱子",
+      "relevant": { "zhuxi": 3, "sishu_zhangju": 2, "xinan_lixue": 1 },
+      "tags": ["别名"],
+      "note": "朱子为朱熹尊称"
+    },
+    {
+      "id": "r013",
+      "query": "红顶商人",
+      "relevant": { "hu_xueyan": 3, "hu_qingyutang": 1 },
+      "tags": ["别名"],
+      "note": "红顶商人指胡雪岩"
+    },
+    {
+      "id": "r014",
+      "query": "江南第一村",
+      "relevant": { "chengkan": 3 },
+      "tags": ["别名"],
+      "note": "呈坎的俗称"
+    },
+    {
+      "id": "r015",
+      "query": "四水归堂",
+      "relevant": { "tianjing": 3, "huizhou_minju": 2 },
+      "tags": ["别名"],
+      "note": "四水归堂是天井的别称"
+    },
+    {
+      "id": "r016",
+      "query": "新安商人",
+      "relevant": { "huishang": 3 },
+      "tags": ["别名"],
+      "note": "徽商的别称"
+    },
+    {
+      "id": "r017",
+      "query": "黟山",
+      "relevant": { "huangshan": 3, "yixian": 1 },
+      "tags": ["别名"],
+      "note": "黟山是黄山的旧称；黟县亦以黟山得名，弱相关"
+    },
+    {
+      "id": "r018",
+      "query": "程朱理学",
+      "relevant": { "xinan_lixue": 3, "zhuxi": 2, "sishu_zhangju": 2 },
+      "tags": ["别名"],
+      "note": "程朱理学即新安理学"
+    },
+    {
+      "id": "r019",
+      "query": "龙尾砚",
+      "relevant": { "sheyan": 3 },
+      "tags": ["别名"],
+      "note": "龙尾砚是歙砚的别名"
+    },
+    {
+      "id": "r020",
+      "query": "徽城",
+      "relevant": { "shexian": 3 },
+      "tags": ["别名"],
+      "note": "徽城是歙县县城的别称"
+    },
+    {
+      "id": "r021",
+      "query": "宏村属于哪个县",
+      "relevant": { "hongcun": 3, "yixian": 3 },
+      "tags": ["关系"],
+      "note": "答案由「宏村 → 位于 → 黟县」这条关系给出"
+    },
+    {
+      "id": "r022",
+      "query": "马头墙有什么作用",
+      "relevant": { "matouqiang": 3, "huizhou_minju": 2, "tianjing": 1 },
+      "tags": ["概念"],
+      "note": "防火功能在马头墙条目，构成上属徽州民居"
+    },
+    {
+      "id": "r023",
+      "query": "徽派建筑有哪些主要特征",
+      "relevant": {
+        "huipai_architecture": 3,
+        "huizhou_minju": 2,
+        "matouqiang": 2,
+        "tianjing": 2
+      },
+      "tags": ["概念"],
+      "note": "总述 + 三个代表性构件"
+    },
+    {
+      "id": "r024",
+      "query": "徽州三雕包括哪些",
+      "relevant": { "huizhou_sandiao": 3, "huizhou_sidiao": 3 },
+      "tags": ["概念"],
+      "note": "三雕与四雕条目互为补充，都应召回到位"
+    },
+    {
+      "id": "r025",
+      "query": "徽商是什么",
+      "relevant": {
+        "huishang": 3,
+        "huizhou_yanshang": 1,
+        "huizhou_chashang": 1,
+        "huizhou_diandang": 1,
+        "yangzhou_huishang": 1
+      },
+      "tags": ["概念"],
+      "note": "总述为 3；盐、茶、典当、扬州分支为弱相关"
+    },
+    {
+      "id": "r026",
+      "query": "新安画派的代表人物",
+      "relevant": { "xinan_huapai": 3, "jianjiang": 2, "huangbinhong": 2 },
+      "tags": ["关系"],
+      "note": "画派条目 + 创始人渐江 + 近代代表黄宾虹"
+    },
+    {
+      "id": "r027",
+      "query": "胡适的家乡在哪里",
+      "relevant": { "hushi": 3, "jixi": 3 },
+      "tags": ["关系"],
+      "note": "胡适 → 籍贯 → 绩溪"
+    },
+    {
+      "id": "r028",
+      "query": "婺源属于徽州吗",
+      "relevant": { "wuyuan": 3, "huizhou_region": 3 },
+      "tags": ["关系"],
+      "note": "婺源为徽州六县之一"
+    },
+    {
+      "id": "r029",
+      "query": "黄山原来叫什么",
+      "relevant": { "huangshan": 3 },
+      "tags": ["属性"],
+      "note": "黄山旧称黟山，写在黄山条目的别名里"
+    },
+    {
+      "id": "r030",
+      "query": "胡庆余堂是谁创办的",
+      "relevant": { "hu_qingyutang": 3, "hu_xueyan": 3 },
+      "tags": ["关系"],
+      "note": "创办人为胡雪岩"
+    },
+    {
+      "id": "r031",
+      "query": "徽州宗族制度的特点",
+      "relevant": { "huizhou_zongzu": 3, "huizhou_zupu": 2, "huizhou_citang": 1 },
+      "tags": ["概念"],
+      "note": "宗族制度为总述，族谱与祠堂为其载体"
+    },
+    {
+      "id": "r032",
+      "query": "算法统宗的作者是谁",
+      "relevant": { "suanfa_tongzong": 3, "chengdawei": 3 },
+      "tags": ["关系"],
+      "note": "作者程大位"
+    },
+    {
+      "id": "r033",
+      "query": "徽菜的代表菜品",
+      "relevant": {
+        "huicai": 3,
+        "chou_guiyu": 2,
+        "maodoufu": 2,
+        "yipin_guo": 2,
+        "daoban_xiang": 2,
+        "huangshan_shaobing": 2,
+        "huizhou_huotui": 2
+      },
+      "tags": ["概念"],
+      "note": "总述 + 六道代表菜"
+    },
+    {
+      "id": "r034",
+      "query": "新安医学有哪些代表人物",
+      "relevant": { "xinan_yixue": 3, "wangji": 2, "zhangyitie": 2 },
+      "tags": ["关系"],
+      "note": "学派条目 + 两位医家"
+    },
+    {
+      "id": "r035",
+      "query": "徽州鱼灯的来历",
+      "relevant": { "huizhou_yudeng": 3, "huizhou_bandenglong": 1 },
+      "tags": ["概念"],
+      "note": "鱼灯为本体，板凳龙为同域民俗（弱相关）"
+    },
+    {
+      "id": "r036",
+      "query": "詹天佑主持修建了哪条铁路",
+      "relevant": { "zhantianyou": 3 },
+      "tags": ["关系"],
+      "note": "资料中只记其为「中国铁路之父」，未记具体线路，故只标詹天佑"
+    },
+    {
+      "id": "r037",
+      "query": "量子纠缠与超导体",
+      "relevant": {},
+      "tags": ["负样本"],
+      "note": "与徽州文化无关，语料中无任何可召回词"
+    },
+    {
+      "id": "r038",
+      "query": "Rust 所有权机制",
+      "relevant": {},
+      "tags": ["负样本"],
+      "note": "同上"
+    },
+    {
+      "id": "r039",
+      "query": "numpy 的广播机制",
+      "relevant": {},
+      "tags": ["负样本"],
+      "note": "同上"
+    },
+    {
+      "id": "r040",
+      "query": "Kubernetes 的调度策略",
+      "relevant": {},
+      "tags": ["负样本"],
+      "note": "同上"
+    },
+    {
+      "id": "r041",
+      "query": "Python 装饰器怎么用",
+      "relevant": {},
+      "tags": ["负样本", "词面重叠"],
+      "note": "「装饰」与承志堂等条目的字面重叠，是词袋检索的已知困难样本"
+    },
+    {
+      "id": "r042",
+      "query": "区块链共识算法",
+      "relevant": {},
+      "tags": ["负样本", "词面重叠"],
+      "note": "「算法」与《算法统宗》字面重叠，同上"
+    }
+  ]
+}

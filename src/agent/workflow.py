@@ -38,7 +38,12 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 from src.data.repository import Repository
 from src.qa import prompt as qa_prompt
 from src.qa.engine import QAEngine, QAResult
-from src.qa.errors import AllBackendsFailedError, QuestionError, describe_exception
+from src.qa.errors import (
+    AllBackendsFailedError,
+    QuestionError,
+    describe_exception,
+    split_degradations,
+)
 from src.qa.retriever import Passage
 
 # --------------------------------------------------------------------------
@@ -448,12 +453,27 @@ def verify_answer(result: QAResult) -> Tuple[CheckItem, ...]:
             )
         )
 
-    if result.degraded:
+    # 降级要看性质：没配 Dify 之类的「配置性跳过」是预期行为，
+    # 只有「配了却失败」（超时、5xx、空回答）才是真问题。
+    config_skips, runtime_failures = split_degradations(result.degradations)
+    if runtime_failures:
         checks.append(
-            CheckItem("未发生后端降级", LEVEL_WARN, "；".join(result.degradations))
+            CheckItem(
+                "未发生后端故障",
+                LEVEL_WARN,
+                "；".join(runtime_failures),
+            )
+        )
+    elif config_skips:
+        checks.append(
+            CheckItem(
+                "未发生后端故障",
+                LEVEL_PASS,
+                "以下后端未配置，属预期跳过：" + "；".join(config_skips),
+            )
         )
     else:
-        checks.append(CheckItem("未发生后端降级", LEVEL_PASS, "降级链完整可用"))
+        checks.append(CheckItem("未发生后端故障", LEVEL_PASS, "降级链完整可用"))
     return tuple(checks)
 
 
@@ -632,7 +652,8 @@ class AgentWorkflow:
             StepRecord(
                 key=STEP_ANSWER,
                 title=STEP_TITLES[STEP_ANSWER],
-                status="warn" if answer_result.degraded else "ok",
+                # 只有运行时故障才算「作答步骤有问题」；未配置的高优先后端被跳过属预期
+                status="warn" if split_degradations(answer_result.degradations)[1] else "ok",
                 input_summary=f"{len(passages)} 条资料 → {answer_result.backend_label}",
                 output_summary=(
                     f"生成 {len(answer_result.answer)} 字回答，引用 {len(answer_result.citations)} 处，"

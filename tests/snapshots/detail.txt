@@ -1,0 +1,44 @@
+# section titles (in order)
+- 结构化属性
+- 正文
+- 关联关系
+- 参考资料
+
+# style classes used by this page (sorted)
+- hz-alias
+- hz-body
+- hz-card
+- hz-cat
+- hz-crumb
+- hz-detail
+- hz-footer
+- hz-group-title
+- hz-rank
+- hz-rel
+- hz-section-sub
+- hz-section-title
+- hz-src
+
+# widgets (sorted)
+- button|dt_back_hongcun|← 返回文化百科
+- button|dt_graph_hongcun|在图谱中查看
+- button|dt_nb_hongcun_chengzhitang_r016|承志堂
+- button|dt_nb_hongcun_huizhou_region_r001|徽州
+- button|dt_nb_hongcun_minju_yingzao_r033|徽派传统民居营造技艺
+- button|dt_nb_hongcun_tianjing_r043|天井
+- button|dt_nb_hongcun_yixian_r157|黟县
+- button|nav_about|关于项目
+- button|nav_ask|AI 问答
+- button|nav_explore|文化百科
+- button|nav_graph|知识图谱
+- button|nav_home|文化探索
+
+# sidebar nav (sorted)
+- nav_about|关于项目
+- nav_ask|AI 问答
+- nav_explore|文化百科
+- nav_graph|知识图谱
+- nav_home|文化探索
+
+# content markdown blocks
+- 20

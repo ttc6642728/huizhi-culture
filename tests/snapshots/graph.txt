@@ -1,0 +1,43 @@
+# section titles (in order)
+- 结构指标
+- 实体信息
+- 度数排名（连接最多）
+- 介数排名（桥梁作用）
+- 关系类型分布（共 <n> 类、<n> 条）
+
+# style classes used by this page (sorted)
+- hz-card
+- hz-card--accent
+- hz-card--flat
+- hz-footer
+- hz-hero
+- hz-kv
+- hz-legend
+- hz-path
+- hz-rank
+- hz-section-title
+- hz-tag
+- hz-tag--accent
+- hz-tag--stone
+
+# widgets (sorted)
+- button|nav_about|关于项目
+- button|nav_ask|AI 问答
+- button|nav_explore|文化百科
+- button|nav_graph|知识图谱
+- button|nav_home|文化探索
+- selectbox|graph_focus_panel_select|实体
+- selectbox|graph_focus_select|聚焦实体
+- selectbox|path_dst|终点
+- selectbox|path_src|起点
+- slider||聚焦半径
+
+# sidebar nav (sorted)
+- nav_about|关于项目
+- nav_ask|AI 问答
+- nav_explore|文化百科
+- nav_graph|知识图谱
+- nav_home|文化探索
+
+# content markdown blocks
+- 34

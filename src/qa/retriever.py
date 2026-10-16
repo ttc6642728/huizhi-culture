@@ -246,6 +246,11 @@ class Retriever:
             category_name = category.name if category else entity.category
 
             blocks: List[str] = [entity.summary, entity.description]
+            # 别名必须进正文：它本来就已经参与分词与匹配，却不出现在送给后端的资料里，
+            # 于是「徽商又被称为什么」这类问题会命中条目、却看不到答案
+            # （评估脚本正是靠这一条抓到了这个缺陷）。
+            if entity.aliases:
+                blocks.append("别名：" + "、".join(entity.aliases))
             if entity.attributes:
                 blocks.append(
                     "属性：" + "；".join(f"{k}：{v}" for k, v in entity.attributes.items())

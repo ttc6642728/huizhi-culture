@@ -23,6 +23,8 @@ from src.qa.engine import (
     requests_post,
 )
 from src.qa.errors import (
+    is_config_skip,
+    split_degradations,
     AllBackendsFailedError,
     BackendResponseError,
     BackendTimeoutError,
@@ -507,3 +509,40 @@ def test_requests_post_raises_when_requests_missing(monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(engine_module, "requests", None)
     with pytest.raises(BackendUnavailableError):
         requests_post("https://x.invalid", headers={}, json={}, timeout=1)
+
+
+# --------------------------------------------------------------------------
+# 降级的性质：配置性跳过 vs 运行时故障
+#
+# 这两者性质完全不同：「没配 Dify」是预期行为，「配了却 5xx」才需要人看一眼。
+# 智能体工作流的核查据此判定，因此这里把分类规则钉死。
+# --------------------------------------------------------------------------
+
+
+def test_config_skips_are_recognised() -> None:
+    assert is_config_skip("Dify 知识库 / 工作流：未配置 DIFY_BASE_URL")
+    assert is_config_skip("OpenAI 兼容大模型：未配置 LLM_API_KEY")
+    assert is_config_skip("Dify 知识库 / 工作流：DIFY_APP_TYPE「x」不受支持")
+    assert is_config_skip("OpenAI 兼容大模型：未安装 requests，无法调用远程问答后端")
+
+
+def test_runtime_failures_are_not_config_skips() -> None:
+    assert not is_config_skip("OpenAI 兼容大模型：请求超时：read timed out")
+    assert not is_config_skip("Dify 知识库 / 工作流：HTTP 503：service unavailable")
+    assert not is_config_skip("本地检索式后端：返回了空回答")
+    assert not is_config_skip("OpenAI 兼容大模型：BackendResponseError：模型返回了空回答")
+
+
+def test_split_degradations_keeps_order_and_categories() -> None:
+    degradations = [
+        "Dify 知识库 / 工作流：未配置 DIFY_BASE_URL",
+        "OpenAI 兼容大模型：请求超时：read timed out",
+        "本地检索式后端：返回了空回答",
+    ]
+    skips, failures = split_degradations(degradations)
+    assert skips == ["Dify 知识库 / 工作流：未配置 DIFY_BASE_URL"]
+    assert failures == [
+        "OpenAI 兼容大模型：请求超时：read timed out",
+        "本地检索式后端：返回了空回答",
+    ]
+    assert split_degradations([]) == ([], [])

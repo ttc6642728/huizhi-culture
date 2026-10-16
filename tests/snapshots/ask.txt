@@ -1,0 +1,38 @@
+# section titles (in order)
+- 示例问题
+
+# style classes used by this page (sorted)
+- hz-backend
+- hz-backend--active
+- hz-crumb
+- hz-footer
+- hz-hero
+- hz-note
+- hz-section-sub
+- hz-section-title
+
+# widgets (sorted)
+- button|nav_about|关于项目
+- button|nav_ask|AI 问答
+- button|nav_explore|文化百科
+- button|nav_graph|知识图谱
+- button|nav_home|文化探索
+- button|qa_clear|清空会话
+- button|qa_ex_0|徽州是什么？
+- button|qa_ex_1|徽州与休宁有什么关系？
+- button|qa_ex_2|徽商是什么？
+- button|qa_ex_3|徽商与徽州有什么关系？
+- button|qa_ex_4|徽州民居是什么？
+- button|qa_ex_5|徽州民居与徽州三雕有什么关系？
+- button|qa_submit|提问
+- text_area|qa_input|你的问题
+
+# sidebar nav (sorted)
+- nav_about|关于项目
+- nav_ask|AI 问答
+- nav_explore|文化百科
+- nav_graph|知识图谱
+- nav_home|文化探索
+
+# content markdown blocks
+- 13

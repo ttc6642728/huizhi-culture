@@ -19,6 +19,7 @@ from src import __version__, config
 from src.agent import workflow as wf
 from src.agent.workflow import AgentWorkflow, WorkflowResult
 from src.data.loader import DataError, dataset_summary, load_dataset
+from src.eval.dataset import EvalDataError
 from src.qa.errors import QAError
 from src.ui import components as ui
 from src.ui import datastore, nav
@@ -42,6 +43,9 @@ _MODULES: List[Tuple[str, str]] = [
     ("src.qa.prompt", "编号引用提示词、引用解析与纠正指令"),
     ("src.qa.engine", "三层后端降级链、引用溯源与越界编号识别"),
     ("src.agent.workflow", "六步可追踪工作流与结构化引用核查"),
+    ("src.eval.metrics", "检索与问答指标（Recall@K / nDCG@K / 引用覆盖等，纯函数）"),
+    ("src.eval.dataset", "人工标注集的加载与严格校验"),
+    ("src.eval.runner", "在标注集上跑评估并产出结构化报告"),
 ]
 
 _PRINCIPLES = [
@@ -94,6 +98,110 @@ def _render_overview() -> None:
             "本页的智能体工作流演示会真实调用问答后端。"
             "未配置任何模型凭证时自动使用本地检索式后端（纯离线、可复现，不做生成式改写）。",
             "info",
+        )
+    )
+
+
+# --------------------------------------------------------------------------
+# 区块：质量评估
+# --------------------------------------------------------------------------
+
+
+def _render_evaluation() -> None:
+    """在人工标注集上实跑出的效果指标。
+
+    这里显示的每个数字都来自 ``src/eval`` 的实跑结果（缓存），
+    不是写死的宣传值；跑法与命令行 ``python scripts/evaluate.py`` 完全一致。
+    """
+    ui.render_section(
+        "质量评估",
+        "在人工标注集上实跑：检索指标与回答指标都可复现、可核对，不掺演示数据。",
+    )
+
+    try:
+        report = datastore.eval_report()
+        rs, qs = datastore.eval_sets()
+    except EvalDataError as exc:
+        ui.render(ui.note_line(f"标注集不可用，质量评估已跳过：{str(exc).splitlines()[0]}", "warn"))
+        return
+    except DataError as exc:
+        ui.render(ui.note_line(f"数据加载失败，质量评估已跳过：{str(exc).splitlines()[0]}", "warn"))
+        return
+
+    retrieval = report.retrieval
+    answers = report.answers
+    if retrieval is None or answers is None:
+        ui.render(ui.note_line("评估结果不完整，已跳过展示。", "warn"))
+        return
+
+    top = max(retrieval.ks)
+    agg = retrieval.aggregates
+    rows = [
+        ui.kv_row("检索标注集", f"{len(rs.cases)} 条（有答案 {len(rs.positives)} / 负样本 {len(rs.negatives)}）"),
+        ui.kv_row("问答标注集", f"{len(qs.cases)} 条（可答 {len(qs.answerable)} / 应拒答 {len(qs.abstain)}）"),
+        ui.kv_row("标注位置", "<code>data/eval/retrieval_eval.json</code>、<code>data/eval/qa_eval.json</code>"),
+    ]
+    ui.render(ui.card_html("标注集", "".join(rows)))
+
+    ui.render(
+        ui.metric_grid(
+            [
+                (f"Hit@{top}", f"{agg.get(f'hit@{top}', 0):.3f}", "相关项出现在前 K 名"),
+                (f"Recall@{top}", f"{agg.get(f'recall@{top}', 0):.3f}", "相关项被召回的比例"),
+                (f"nDCG@{top}", f"{agg.get(f'ndcg@{top}', 0):.3f}", "分级相关性下的排序质量"),
+                ("MRR", f"{agg.get('mrr', 0):.3f}", "首个相关项的平均倒数名次"),
+                ("负样本留空", f"{retrieval.negative_empty_rate:.3f}", "不该召回时是否空手而归"),
+            ]
+        )
+    )
+
+    aagg = answers.aggregates
+    ui.render(
+        ui.metric_grid(
+            [
+                ("引用覆盖", f"{aagg.get('citation_coverage', 0):.3f}", "期望实体被引用的比例"),
+                ("要点命中", f"{aagg.get('term_recall', 0):.3f}", "答案含金标准事实词的比例"),
+                ("可溯源", f"{aagg.get('grounded_rate', 0):.3f}", "回答带可核查引用"),
+                ("拒答判断", f"{aagg.get('abstention_accuracy', 0):.3f}", "该答的答、该拒的拒"),
+                ("无编造编号", f"{aagg.get('clean_citation_rate', 0):.3f}", "未出现不存在的引用编号"),
+            ]
+        )
+    )
+
+    rows = []
+    for tag, item in retrieval.tag_breakdown.items():
+        cells = [ui.esc(tag), f"{int(item['cases'])}"]
+        for key in ("hit", "recall", "ndcg"):
+            cells.append(f"{item[key]:.3f}" if key in item else "—")
+        cells.append(f"{item['negative_empty']:.3f}" if "negative_empty" in item else "—")
+        rows.append(cells)
+    ui.render(
+        ui.card_html(
+            f"按标签分组（@{top}）",
+            ui.table_html(
+                ["标签", "样本", "命中", "召回", "nDCG", "正确留空"],
+                rows,
+                aligns=["left", "right", "right", "right", "right", "right"],
+            ),
+            flat=True,
+        )
+    )
+
+    ui.render(
+        ui.note_line(
+            "评估是离线跑的：检索指标只依赖本地索引，回答指标强制使用本地检索式后端，"
+            "因此结果确定、可复现，也不消耗任何 API 额度（评估真实模型请用 "
+            "python scripts/evaluate.py --live）。"
+            "「词面重叠」两个负样本会被误召回（如「区块链共识算法」命中《算法统宗》）——"
+            "这是词袋检索的固有局限，本轮如实计入指标，不做剔除。",
+            "info",
+        )
+    )
+    ui.render(
+        ui.note_line(
+            "评估的价值在于能指出问题：首轮运行发现「徽商又被称为什么」这类问题答不出别名，"
+            "原因是别名参与了匹配却没有出现在送进后端的资料正文里；修正后要点命中率由 0.857 升到 1.000。",
+            "ok",
         )
     )
 
@@ -403,7 +511,8 @@ def render() -> None:
             "关于项目",
             "徽知把徽州文化整理成可检索、可核查、可交互的知识。"
             "这一页说明项目的架构与开发原则，并提供一条**可现场运行**的智能体工作流："
-            "从问题解析、资料检索、依据资料作答，到引用自我核查与输出归档，每一步都留痕。",
+            "从问题解析、资料检索、依据资料作答，到引用自我核查与输出归档，每一步都留痕；"
+            "下方还有一份在人工标注集上**实跑得出**的质量评估。",
         )
     )
 
@@ -420,6 +529,9 @@ def render() -> None:
 
     st.markdown("<div style='height:.4rem;'></div>", unsafe_allow_html=True)
     _render_workflow(workflow)
+
+    st.markdown("<div style='height:.6rem;'></div>", unsafe_allow_html=True)
+    _render_evaluation()
 
     st.markdown("<div style='height:.6rem;'></div>", unsafe_allow_html=True)
     _render_architecture()

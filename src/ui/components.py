@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import html as _html
 import re
-from typing import Iterable, Sequence
+from typing import Iterable, Sequence, Tuple
 
 import streamlit as st
 
@@ -87,6 +87,24 @@ def tags(items: Iterable[str], kind: str = "") -> str:
     """渲染一组标签。``kind`` 可为 ``""`` / ``"accent"`` / ``"stone"``。"""
     cls = "hz-tag" + (f" hz-tag--{kind}" if kind else "")
     return "".join(f'<span class="{cls}">{esc(i)}</span>' for i in items if str(i).strip())
+
+
+def metric_grid(items: Sequence[Tuple[str, str, str]]) -> str:
+    """指标格子：``(名称, 数值, 补充说明)`` 三元组组成的网格。
+
+    用于质量评估这类「一眼看若干个数」的场景；数值由调用方格式化成字符串，
+    组件本身不做任何计算或舍入，避免「显示的数」与「算出的数」对不上。
+    """
+    cells = []
+    for label, value, note in items:
+        sub = f'<div class="hz-metric__note">{esc(note)}</div>' if note else ""
+        cells.append(
+            '<div class="hz-metric">'
+            f'<div class="hz-metric__label">{esc(label)}</div>'
+            f'<div class="hz-metric__value">{esc(value)}</div>'
+            f"{sub}</div>"
+        )
+    return f'<div class="hz-metrics">{"".join(cells)}</div>'
 
 
 def table_html(
@@ -489,6 +507,7 @@ __all__ = [
     "card_html",
     "kv_row",
     "tags",
+    "metric_grid",
     "empty_state",
     "error_state",
     "table_html",

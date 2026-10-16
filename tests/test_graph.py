@@ -554,3 +554,130 @@ def test_category_palette_covers_all_categories(graph: nx.MultiDiGraph) -> None:
 def test_network_options_is_json_serializable() -> None:
     opts = gv.network_options(physics=True)
     json.dumps(opts)
+
+
+# --------------------------------------------------------------------------
+# 规模守卫：大图分片与性能预算
+#
+# 当前数据（96 节点）不会触发分片，所以这里**合成一个大图**来验证能力真的可用，
+# 而不是「写了但从来没跑过」。同时把实测的渲染耗时与产物体积写成可断言的预算，
+# 免得日后数据膨胀或改动把性能悄悄拖垮。
+# --------------------------------------------------------------------------
+
+
+def _synthetic_graph(per_category: int = 120, categories: int = 5) -> nx.MultiDiGraph:
+    """合成一张 ``categories × per_category`` 个节点的有向多重图。"""
+    graph = nx.MultiDiGraph()
+    for c in range(categories):
+        for i in range(per_category):
+            node = f"c{c}n{i}"
+            graph.add_node(
+                node,
+                name=f"节点{i}",
+                category=f"cat{c}",
+                category_name=f"分类{c}",
+                summary="合成节点（仅用于规模测试）",
+            )
+        for i in range(per_category - 1):
+            graph.add_edge(
+                f"c{c}n{i}", f"c{c}n{i + 1}", type="rel", type_name="测试关系", label="测试"
+            )
+    if categories >= 2:
+        for i in range(per_category):  # 跨分类的关系，验证分片只保留片内边
+            graph.add_edge("c0n%d" % i, f"c1n{i}", type="cross", type_name="跨类", label="跨类")
+    return gb.with_degree(graph)
+
+
+def test_small_graph_is_not_sharded(graph: nx.MultiDiGraph) -> None:
+    """当前数据规模下必须仍是一份全图——分片不能影响既有行为。"""
+    assert graph.number_of_nodes() <= gv.DEFAULT_NODE_BUDGET
+    shards = gv.shard_graph(graph)
+    assert len(shards) == 1
+    label, sub = shards[0]
+    assert label == "全图"
+    assert sub.number_of_nodes() == graph.number_of_nodes()
+    assert sub.number_of_edges() == graph.number_of_edges()
+
+
+def test_sharded_html_matches_single_html_for_small_graph(graph: nx.MultiDiGraph) -> None:
+    """不分片时两条路径产出的 HTML 完全一致（分片逻辑对既有渲染零影响）。"""
+    direct = gv.build_network_html(graph, height=400)
+    sharded = gv.build_sharded_html(graph, height=400)
+    assert len(sharded) == 1
+    assert sharded[0].html == direct
+    assert sharded[0].label == "全图"
+
+
+def test_large_graph_is_split_within_budget() -> None:
+    big = _synthetic_graph()
+    shards = gv.shard_graph(big, gv.DEFAULT_NODE_BUDGET)
+
+    assert len(shards) >= 2, "超过阈值就必须分片"
+    for label, sub in shards:
+        assert 0 < sub.number_of_nodes() <= gv.DEFAULT_NODE_BUDGET, f"{label} 超出预算"
+
+    covered = [node for _, sub in shards for node in sub.nodes]
+    assert len(covered) == len(set(covered)), "分片之间不得重复包含同一节点"
+    assert set(covered) == set(big.nodes), "分片必须覆盖全部节点，不能悄悄丢节点"
+
+
+def test_large_single_category_is_chunked() -> None:
+    """单个分类自身就超预算时，按度数降序切成多块，而不是硬塞进一片。"""
+    graph = _synthetic_graph(per_category=250, categories=1)
+    shards = gv.shard_graph(graph, budget=100)
+    assert len(shards) == 3, f"250 个节点、预算 100 应为 3 片，实际 {len(shards)}"
+    for label, sub in shards:
+        assert sub.number_of_nodes() <= 100
+        assert "（" in label, f"分块标签应标明序号：{label}"
+
+
+def test_shard_labels_are_reproducible() -> None:
+    big = _synthetic_graph()
+    first = [label for label, _ in gv.shard_graph(big, 400)]
+    second = [label for label, _ in gv.shard_graph(big, 400)]
+    assert first == second, "分片顺序必须可复现，否则界面每次刷新都在变"
+
+
+def test_shards_keep_only_internal_edges() -> None:
+    """片内只保留片内的边——跨片边不画（界面上会明确说明这一点）。"""
+    big = _synthetic_graph()
+    for label, sub in gv.shard_graph(big, 400):
+        members = set(sub.nodes)
+        for u, v, _key in sub.edges(keys=True):
+            assert u in members and v in members, f"{label} 出现了跨片边 {u}→{v}"
+
+
+def test_build_sharded_html_renders_every_shard_offline() -> None:
+    big = _synthetic_graph(per_category=60, categories=3)
+    shards = gv.build_sharded_html(big, budget=100, height=300)
+    assert len(shards) >= 2
+    for shard in shards:
+        assert shard.node_count > 0
+        assert shard.size_kb > 0
+        assert "<html" in shard.html.lower()
+        assert not EXTERNAL_REF.search(shard.html), f"{shard.label} 含外部资源引用"
+
+
+def test_focus_only_applies_to_the_shard_containing_it() -> None:
+    """焦点实体只应出现在包含它的那一片里被高亮，其它片不受影响。"""
+    big = _synthetic_graph()
+    shards = gv.build_sharded_html(big, budget=400, focus="c4n3", height=300)
+    hit = [s for s in shards if "c4n3" in s.html and 'borderWidth: 3.2' in s.html.replace('"', "")]
+    assert hit, "包含焦点实体的分片应当把它渲染为聚焦状态"
+
+
+def test_current_graph_render_within_latency_and_size_budget(graph: nx.MultiDiGraph) -> None:
+    """性能预算：当前规模下渲染应在 3 秒内完成、产物不超过 2 MB。
+
+    预算取得比较宽松，目的是发现「数量级」的退化（例如误把外网资源拉回来、
+    或对每个节点做了平方级操作），而不是给渲染时间设一个会随时抖动卡人的门槛。
+    """
+    import time
+
+    started = time.perf_counter()
+    html = gv.build_network_html(graph, height=700)
+    elapsed = time.perf_counter() - started
+    size_kb = len(html.encode("utf-8")) / 1024
+
+    assert elapsed < 3.0, f"渲染耗时 {elapsed:.2f}s，超出预算"
+    assert size_kb < 2048, f"产物 {size_kb:.0f} KB，超出预算"

@@ -28,6 +28,18 @@
       "height": 1978
     },
     {
+      "entity_id": "hu_qingyutang",
+      "file": "hu_qingyutang.jpg",
+      "caption": "胡庆余堂",
+      "title": "File:20260625 Hu Qing Yu Tang 03.jpg",
+      "artist": "Windmemories",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source_url": "https://commons.wikimedia.org/wiki/File:20260625_Hu_Qing_Yu_Tang_03.jpg",
+      "width": 1800,
+      "height": 1200
+    },
+    {
       "entity_id": "huangshan",
       "file": "huangshan.jpg",
       "caption": "黄山花岗岩峰林",
@@ -38,6 +50,42 @@
       "source_url": "https://commons.wikimedia.org/wiki/File:Anhui_Huangshan.jpg",
       "width": 4000,
       "height": 2665
+    },
+    {
+      "entity_id": "huipai_architecture",
+      "file": "huipai_architecture.jpg",
+      "caption": "徽派建筑粉墙黛瓦",
+      "title": "File:Conclusion to Huizhou Vernacular Architecture (9979418446).jpg",
+      "artist": "Gary Todd from Xinzheng, China",
+      "license": "CC0",
+      "license_url": "http://creativecommons.org/publicdomain/zero/1.0/deed.en",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Conclusion_to_Huizhou_Vernacular_Architecture_(9979418446).jpg",
+      "width": 3456,
+      "height": 2304
+    },
+    {
+      "entity_id": "huizhou_minju",
+      "file": "huizhou_minju.jpg",
+      "caption": "徽州民居天井院",
+      "title": "File:Huizhou Xixinan Laowuge ji Lüraoting 2016.11.13 16-49-42.jpg",
+      "artist": "Zhangzhugang",
+      "license": "CC BY-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/4.0",
+      "source_url": "https://commons.wikimedia.org/wiki/File:Huizhou_Xixinan_Laowuge_ji_L%C3%BCraoting_2016.11.13_16-49-42.jpg",
+      "width": 5472,
+      "height": 3648
+    },
+    {
+      "entity_id": "nanping",
+      "file": "nanping.jpg",
+      "caption": "南屏村落巷弄",
+      "title": "File:The Memorial Temple for the Family of Ye in Nanping 2013-04.JPG",
+      "artist": "(Cat's diary) 猫猫的日记本",
+      "license": "CC BY-SA 3.0",
+      "license_url": "https://creativecommons.org/licenses/by-sa/3.0",
+      "source_url": "https://commons.wikimedia.org/wiki/File:The_Memorial_Temple_for_the_Family_of_Ye_in_Nanping_2013-04.JPG",
+      "width": 4320,
+      "height": 3240
     },
     {
       "entity_id": "qiyunshan",

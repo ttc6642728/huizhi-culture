@@ -1,0 +1,46 @@
+# section titles (in order)
+- 文化数据概况
+- 分类分布
+- 知识图谱概况
+- 图谱结构与核心枢纽
+- 问答后端
+- 后端状态
+- 运行环境
+- 环境自检
+- 运行依赖（<n>/<n> 已安装）
+- 文化数据
+- 模块交付进度
+- 开始探索
+
+# style classes used by this page (sorted)
+- hz-card
+- hz-card--flat
+- hz-footer
+- hz-hero
+- hz-kv
+- hz-section-sub
+- hz-section-title
+- hz-tag
+- hz-tag--accent
+
+# widgets (sorted)
+- button|home_go_agent|运行智能体工作流
+- button|home_go_ask|向 AI 提问
+- button|home_go_explore|浏览文化百科
+- button|home_go_graph|打开知识图谱
+- button|home_go_random|随机看一个实体
+- button|nav_about|关于项目
+- button|nav_ask|AI 问答
+- button|nav_explore|文化百科
+- button|nav_graph|知识图谱
+- button|nav_home|文化探索
+
+# sidebar nav (sorted)
+- nav_about|关于项目
+- nav_ask|AI 问答
+- nav_explore|文化百科
+- nav_graph|知识图谱
+- nav_home|文化探索
+
+# content markdown blocks
+- 18

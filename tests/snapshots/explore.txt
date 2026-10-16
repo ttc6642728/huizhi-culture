@@ -1,0 +1,55 @@
+# section titles (in order)
+
+# style classes used by this page (sorted)
+- hz-cat
+- hz-count
+- hz-crumb
+- hz-ecard
+- hz-footer
+- hz-hero
+
+# widgets (sorted)
+- button|ex_cat_all|全部分类 <n>
+- button|ex_cat_architecture|徽派建筑 <n>
+- button|ex_cat_clan_edu|宗族与文教 <n>
+- button|ex_cat_classics|文献典籍 <n>
+- button|ex_cat_craft|传统工艺与艺术 <n>
+- button|ex_cat_folk|民俗节庆 <n>
+- button|ex_cat_food|徽菜饮食 <n>
+- button|ex_cat_heritage|非物质文化遗产 <n>
+- button|ex_cat_merchant|徽商 <n>
+- button|ex_cat_nature|山川地域 <n>
+- button|ex_cat_person|历史名人 <n>
+- button|ex_cat_village|古村落 <n>
+- button|ex_next|下一页 →
+- button|ex_open_chengkan|查看详情 →
+- button|ex_open_guanlu|查看详情 →
+- button|ex_open_hongcun|查看详情 →
+- button|ex_open_huipai_architecture|查看详情 →
+- button|ex_open_matouqiang|查看详情 →
+- button|ex_open_nanping|查看详情 →
+- button|ex_open_pingshan|查看详情 →
+- button|ex_open_tangmo|查看详情 →
+- button|ex_open_tangyue|查看详情 →
+- button|ex_open_xidi|查看详情 →
+- button|ex_open_xucun|查看详情 →
+- button|ex_open_yuliang|查看详情 →
+- button|ex_prev|← 上一页
+- button|nav_about|关于项目
+- button|nav_ask|AI 问答
+- button|nav_explore|文化百科
+- button|nav_graph|知识图谱
+- button|nav_home|文化探索
+- selectbox|ex_category|分类
+- selectbox|ex_sort|排序
+- text_input|ex_search|关键词
+
+# sidebar nav (sorted)
+- nav_about|关于项目
+- nav_ask|AI 问答
+- nav_explore|文化百科
+- nav_graph|知识图谱
+- nav_home|文化探索
+
+# content markdown blocks
+- 21
