@@ -49,7 +49,13 @@ def card(content_html: str, accent: bool = False, flat: bool = False) -> str:
     return f'<div class="{cls}">{content_html}</div>'
 
 
-def card_html(title: str, body_html: str = "", meta_html: str = "", accent: bool = False) -> str:
+def card_html(
+    title: str,
+    body_html: str = "",
+    meta_html: str = "",
+    accent: bool = False,
+    flat: bool = False,
+) -> str:
     """带标题的卡片。"""
     parts = []
     if title:
@@ -61,7 +67,7 @@ def card_html(title: str, body_html: str = "", meta_html: str = "", accent: bool
         parts.append(body_html)
     if meta_html:
         parts.append(meta_html)
-    return card("".join(parts), accent=accent)
+    return card("".join(parts), accent=accent, flat=flat)
 
 
 def kv_row(key: str, value: str) -> str:
@@ -80,6 +86,31 @@ def tags(items: Iterable[str], kind: str = "") -> str:
     """渲染一组标签。``kind`` 可为 ``""`` / ``"accent"`` / ``"stone"``。"""
     cls = "hz-tag" + (f" hz-tag--{kind}" if kind else "")
     return "".join(f'<span class="{cls}">{esc(i)}</span>' for i in items if str(i).strip())
+
+
+def table_html(
+    headers: Sequence[str],
+    rows: Sequence[Sequence[str]],
+    aligns: Sequence[str] | None = None,
+) -> str:
+    """简易数据表，用于排名、属性等结构化展示。
+
+    ``headers`` 会被转义；``rows`` 中的每个单元格视为**已是安全的 HTML 片段**
+    （便于嵌入 ``<strong>``、标签徽标等），来自数据的部分需调用方自行 :func:`esc`。
+    """
+    aligns = aligns or ["left"] * len(headers)
+    head = "".join(
+        f'<th style="text-align:{a};">{esc(h)}</th>' for h, a in zip(headers, aligns)
+    )
+    body = "".join(
+        "<tr>" + "".join(
+            f'<td style="text-align:{a};">{cell}</td>' for cell, a in zip(row, aligns)
+        ) + "</tr>"
+        for row in rows
+    )
+    if not rows:
+        body = f'<tr><td colspan="{len(headers)}" style="color:#8C867A;">暂无数据</td></tr>'
+    return f'<table class="hz-rank"><thead><tr>{head}</tr></thead><tbody>{body}</tbody></table>'
 
 
 # --------------------------------------------------------------------------
@@ -152,6 +183,7 @@ __all__ = [
     "tags",
     "empty_state",
     "error_state",
+    "table_html",
     "render",
     "render_section",
     "render_empty",

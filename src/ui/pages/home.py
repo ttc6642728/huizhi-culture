@@ -14,6 +14,8 @@ import streamlit as st
 from src import __version__, config
 from src.data.loader import DataError, dataset_summary, load_dataset
 from src.data.repository import Repository
+from src.graph import analysis as ga
+from src.graph import runtime as graph_runtime
 from src.ui import components as ui
 
 
@@ -33,7 +35,9 @@ _CORE_MODULES: List[Tuple[str, str, str]] = [
     ("src.data.loader", "数据加载与校验", "P1"),
     ("src.data.repository", "实体查询与检索", "P1"),
     ("src.graph.builder", "图谱建模", "P2"),
+    ("src.graph.analysis", "图谱分析", "P2"),
     ("src.graph.visualize", "图谱可视化", "P2"),
+    ("src.ui.pages.graph", "知识图谱页", "P2"),
     ("src.qa.retriever", "资料检索", "P4"),
     ("src.qa.engine", "问答引擎", "P4"),
     ("src.agent.workflow", "智能体工作流", "P5"),
@@ -200,6 +204,62 @@ def _render_data_overview() -> None:
         st.caption(f"图谱连通性检查通过：全部 {summary['entities']} 个实体均至少有一条关系。")
 
 
+def _render_graph_overview() -> None:
+    """知识图谱概况：全部数值由图谱实时计算，不写死。"""
+    ui.render_section("知识图谱概况", "由文化实体与关系构建的多重有向图，实时计算结果。")
+
+    try:
+        graph = graph_runtime.get_graph()
+    except DataError as exc:
+        ui.render_error("知识图谱构建失败", str(exc).splitlines()[0])
+        return
+    except Exception as exc:  # 建图失败不应导致整页崩溃
+        ui.render_error("知识图谱构建失败", f"{type(exc).__name__}：{exc}")
+        return
+
+    stats = ga.graph_stats(graph)
+
+    cols = st.columns(5, gap="medium")
+    cols[0].metric("图谱节点", stats.node_count)
+    cols[1].metric("图谱连线", stats.edge_count)
+    cols[2].metric("连通分量", stats.component_count)
+    cols[3].metric("网络直径", stats.diameter if stats.diameter is not None else "—")
+    cols[4].metric(
+        "平均最短关联",
+        f"{stats.avg_shortest_path:.2f}" if stats.avg_shortest_path is not None else "—",
+    )
+
+    deg = ga.degree_ranking(graph, top_n=3)
+    btw = ga.betweenness_ranking(graph, top_n=3)
+    rows = [
+        ui.kv_row(
+            "连接最多",
+            "　".join(
+                f'<strong>{ui.esc(r.name)}</strong><span style="color:#8C867A;">'
+                f'（{r.degree} 条）</span>'
+                for r in deg
+            ),
+        ),
+        ui.kv_row(
+            "桥梁作用最强",
+            "　".join(
+                f'<strong>{ui.esc(r.name)}</strong><span style="color:#8C867A;">'
+                f'（介数 {r.betweenness:.2f}）</span>'
+                for r in btw
+            ),
+        ),
+        ui.kv_row("文化聚类", f"{len(ga.communities(graph))} 个（基于模块度优化，探索性分析）"),
+    ]
+    ui.render(ui.card_html("图谱结构与核心枢纽", "".join(rows), flat=True))
+
+    if stats.isolated_count:
+        ui.render_error(
+            f"存在 {stats.isolated_count} 个孤立实体",
+            "这些实体没有任何关系，图谱中会显示为游离节点。",
+        )
+    st.caption("完整交互式图谱、关联路径查询与文化聚类详见左侧「知识图谱」页。")
+
+
 def _render_runtime() -> None:
     rows = [
         ui.kv_row("应用版本", f"v{ui.esc(__version__)}"),
@@ -223,6 +283,8 @@ def render() -> None:
 
     _render_data_overview()
 
+    _render_graph_overview()
+
     cols = st.columns([3, 2], gap="large")
     with cols[0]:
         _render_backend()
@@ -232,8 +294,10 @@ def render() -> None:
     _render_checklist()
 
     st.info(
-        "当前进度：**P1 数据层已完成**——90 个文化实体、150 条实体关系、28 条可核查来源已完成整理、"
-        "校验与测试固化。知识图谱（P2）、浏览体验（P3）、AI 问答（P4）、智能体工作流（P5）尚在开发中，"
+        "当前进度：**P2 知识图谱已完成**——图谱建模（多重有向图，完整保留 150 条关系，"
+        "含同向平行边）、结构分析（度数/介数中心性、连通分量、直径、最短关联路径、模块度聚类）"
+        "与离线自洽的交互式可视化均已接入，并附带对应测试。"
+        "浏览体验（P3）、AI 问答（P4）、智能体工作流（P5）尚在开发中，"
         "上方「待开发」状态即为真实进度。"
     )
 

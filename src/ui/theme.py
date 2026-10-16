@@ -356,6 +356,89 @@ input, textarea, [data-baseweb="select"] > div {{
     font-weight: 600;
 }}
 
+/* ===== 图谱图例 ===== */
+.hz-legend {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem 1.1rem;
+    margin: .3rem 0 1rem 0;
+}}
+.hz-legend__item {{
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .82rem;
+    color: {c['ink_soft']};
+}}
+.hz-legend__dot {{
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex: none;
+}}
+.hz-legend__count {{ color: {c['ink_mute']}; font-size: .76rem; }}
+
+/* ===== 关联路径链条 ===== */
+.hz-path {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3rem .4rem;
+    padding: .2rem 0;
+}}
+.hz-path__node {{
+    background: {c['bg_soft']};
+    border: 1px solid {c['line_strong']};
+    border-radius: {RADIUS['sm']};
+    padding: 2px 9px;
+    font-size: .84rem;
+    color: {c['ink']};
+    white-space: nowrap;
+}}
+.hz-path__node--end {{
+    background: {c['cinnabar_wash']};
+    border-color: {c['cinnabar_wash']};
+    color: {c['cinnabar']};
+    font-weight: 600;
+}}
+.hz-path__rel {{ font-size: .74rem; color: {c['cinnabar']}; white-space: nowrap; }}
+.hz-path__arrow {{ color: {c['ink_mute']}; font-size: .8rem; }}
+
+/* ===== 排名表 ===== */
+.hz-rank {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .86rem;
+}}
+.hz-rank th {{
+    text-align: left;
+    color: {c['ink_mute']};
+    font-weight: 500;
+    font-size: .78rem;
+    padding: .35rem .5rem;
+    border-bottom: 1px solid {c['line']};
+}}
+.hz-rank td {{
+    padding: .38rem .5rem;
+    border-bottom: 1px solid {c['line']};
+    color: {c['ink_soft']};
+}}
+.hz-rank td strong {{ color: {c['ink']}; }}
+.hz-rank tr:last-child td {{ border-bottom: none; }}
+
+/* ===== 步骤 / 追踪列表 ===== */
+.hz-steps {{ margin: 0; padding: 0; list-style: none; }}
+.hz-steps li {{
+    display: flex;
+    gap: .55rem;
+    align-items: baseline;
+    font-size: .84rem;
+    color: {c['ink_soft']};
+    padding: .22rem 0;
+}}
+.hz-steps__mark {{ color: {c['cinnabar']}; font-size: .72rem; flex: none; }}
+
 /* 页脚 */
 .hz-footer {{
     margin-top: 3rem;

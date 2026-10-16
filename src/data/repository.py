@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from collections import Counter, deque
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from src.data.loader import Category, Dataset, Entity, Relation, RelationType, Source, load_dataset
 

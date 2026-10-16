@@ -1,0 +1,441 @@
+"""图谱可视化：用 PyVis 生成**完全离线自洽**的交互式图谱 HTML。
+
+为什么必须离线自洽：
+PyVis 默认模板除了 ``vis-network`` 之外，还会**无条件**从 jsDelivr 引入
+Bootstrap 5 的 CSS 与 JS（``templates/template.html`` 第 41–51 行，不受
+``cdn_resources`` 参数控制）。断网或内网环境下这些请求会失败，页面样式与
+交互都会退化。因此本模块在生成后统一做一次资源清洗：
+
+1. ``cdn_resources="in_line"`` 让 ``vis-network`` 的 CSS/JS 内联进 HTML；
+2. :func:`strip_external_resources` 移除模板里遗留的外部 ``<script src>`` /
+   ``<link href>``；
+3. 清洗后立即**校验**是否仍存在外部资源引用，若存在则抛错——宁可报错，
+   也不交付一个「看起来能用、断网就白屏」的页面。
+
+配色遵循项目设计系统：克制、低饱和，用徽州黑白灰打底、朱砂作点缀。
+"""
+
+from __future__ import annotations
+
+import html as _html
+import json
+import re
+from typing import Dict, Iterable, List, Mapping, Optional, Sequence
+
+import networkx as nx
+from pyvis.network import Network
+
+from src.graph.analysis import PathResult
+from src.graph.builder import EmptyGraphError, GraphError, max_degree
+from src.ui.theme import COLORS, FONTS
+
+# --------------------------------------------------------------------------
+# 配色
+# --------------------------------------------------------------------------
+
+#: 各分类的节点颜色（低饱和，来自设计系统的徽州黑白灰 + 少量点缀色）
+CATEGORY_COLORS: Dict[str, Dict[str, str]] = {
+    "village":      {"bg": "#7A7355", "border": "#5E5942"},   # 古村落 · 橄榄灰
+    "architecture": {"bg": "#3B3935", "border": "#22201C"},   # 徽派建筑 · 墨石
+    "heritage":     {"bg": "#B23A2F", "border": "#8E2A21"},   # 非遗 · 朱砂
+    "person":       {"bg": "#7A6A8A", "border": "#5F5270"},   # 历史名人 · 紫檀
+    "merchant":     {"bg": "#8A6A22", "border": "#6E531A"},   # 徽商 · 古铜
+    "craft":        {"bg": "#2F6E7A", "border": "#235661"},   # 工艺 · 青碧
+    "folk":         {"bg": "#A85A2E", "border": "#87471F"},   # 民俗 · 陶土
+    "food":         {"bg": "#8C5A4A", "border": "#703F32"},   # 徽菜 · 赭
+    "clan_edu":     {"bg": "#4A5A78", "border": "#384763"},   # 宗族文教 · 黛蓝
+    "classics":     {"bg": "#6B6357", "border": "#524C42"},   # 文献 · 石褐
+    "nature":       {"bg": "#4F7A6A", "border": "#3C6053"},   # 山川 · 苍绿
+}
+
+#: 未登记分类的兜底颜色
+FALLBACK_COLOR = {"bg": "#8C867A", "border": "#6E695F"}
+
+LABEL_MAX = 12
+
+
+def category_palette(category_ids: Iterable[str]) -> Dict[str, str]:
+    """分类 id → 十六进制颜色，供界面图例使用。"""
+    return {
+        cid: CATEGORY_COLORS.get(cid, FALLBACK_COLOR)["bg"]
+        for cid in category_ids
+    }
+
+
+# --------------------------------------------------------------------------
+# 资源清洗
+# --------------------------------------------------------------------------
+
+_EXT_SCRIPT = re.compile(
+    r"<script\b[^>]*\bsrc\s*=\s*[\"']https?://[^\"']+[\"'][^>]*>(?:\s*</script>)?", re.I | re.S
+)
+_EXT_LINK = re.compile(
+    r"<link\b[^>]*\bhref\s*=\s*[\"']https?://[^\"']+[\"'][^>]*?/?>", re.I | re.S
+)
+#: 安全网：任何仍带外部 src/href 的 script/link（含 ``//cdn...`` 协议相对写法）
+_ANY_EXT_REF = re.compile(
+    r"<(?:script|link)\b[^>]*\b(?:src|href)\s*=\s*[\"'](?:https?:)?//", re.I
+)
+
+
+def strip_external_resources(html: str) -> str:
+    """移除 HTML 中的外部 ``<script src>`` 与 ``<link href>`` 引用。
+
+    Raises:
+        GraphError: 清洗后仍检测到外部资源引用（说明模板结构发生变化，
+            需要人工介入，不能静默交付）。
+    """
+    cleaned = _EXT_SCRIPT.sub("", html)
+    cleaned = _EXT_LINK.sub("", cleaned)
+    leftover = _ANY_EXT_REF.findall(cleaned)
+    if leftover:
+        raise GraphError(
+            f"图谱 HTML 仍包含 {len(leftover)} 处外部资源引用，离线渲染无法保证。"
+            "这通常意味着 PyVis 模板结构发生变化，请检查 pyvis 版本。"
+        )
+    return cleaned
+
+
+#: PyVis 模板会渲染两处空标题（``<center><h1></h1></center>``），各占约 80px 高度
+_EMPTY_HEADING_BLOCK = re.compile(r"<center>\s*<h1>\s*</h1>\s*</center>", re.I)
+_EMPTY_H1 = re.compile(r"<h1>\s*</h1>", re.I)
+
+#: 去掉 iframe 内 body 的默认外边距，使画布与容器严丝合缝
+_FLUSH_STYLE = (
+    "<style>html,body{margin:0;padding:0;border:0;background:%s;}"
+    "#mynetwork{border:0;}</style>" % COLORS["bg"]
+)
+
+
+def tighten_layout(html: str) -> str:
+    """压缩 PyVis 产物的空白：去掉空标题块、移除 body 默认边距。
+
+    PyVis 模板在 ``heading`` 为空时仍会渲染两个空的 ``<h1>``，
+    合计约 160px 的无效高度，会把画布往下推、并让 iframe 出现滚动条。
+    """
+    cleaned = _EMPTY_HEADING_BLOCK.sub("", html)
+    cleaned = _EMPTY_H1.sub("", cleaned)
+    if "</head>" in cleaned:
+        cleaned = cleaned.replace("</head>", _FLUSH_STYLE + "</head>", 1)
+    else:  # 模板结构变化时的兜底：插到最前面
+        cleaned = _FLUSH_STYLE + cleaned
+    return cleaned
+
+
+# --------------------------------------------------------------------------
+# 标题与提示
+# --------------------------------------------------------------------------
+
+
+def _esc(text: object) -> str:
+    return _html.escape(str(text if text is not None else ""), quote=True)
+
+
+def truncate_label(name: str, limit: int = LABEL_MAX) -> str:
+    """过长名称截断为 ``前 N 字…``，避免中文标签互相压盖。"""
+    name = (name or "").strip()
+    return name if len(name) <= limit else name[: limit - 1] + "…"
+
+
+def _node_tooltip(graph: nx.MultiDiGraph, node_id: str) -> str:
+    data = graph.nodes[node_id]
+    aliases = data.get("aliases") or ()
+    lines: List[str] = [
+        f'<div style="font-weight:600;font-size:13px;">{_esc(data.get("name", node_id))}</div>',
+        f'<div style="color:#8C867A;font-size:11px;">{_esc(data.get("category_name", ""))}</div>',
+    ]
+    if aliases:
+        lines.append(
+            f'<div style="color:#8C867A;font-size:11px;">'
+            f'别名：{_esc("、".join(aliases))}</div>'
+        )
+    summary = data.get("summary", "")
+    if summary:
+        lines.append(f'<div style="font-size:12px;margin-top:4px;max-width:280px;">{_esc(summary)}</div>')
+    lines.append(
+        f'<div style="color:#B23A2F;font-size:11px;margin-top:4px;">'
+        f'关联 {graph.degree(node_id)} 条　·　来源 {data.get("source_count", 0)} 项</div>'
+    )
+    return "".join(lines)
+
+
+def _edge_tooltip(data: Mapping[str, object]) -> str:
+    lines = [
+        f'<div style="font-weight:600;font-size:12px;">{_esc(data.get("type_name", ""))}'
+        f'（{_esc(data.get("type", ""))}）</div>'
+    ]
+    if data.get("description"):
+        lines.append(f'<div style="font-size:11px;max-width:260px;">{_esc(data["description"])}</div>')
+    lines.append(
+        f'<div style="color:#B23A2F;font-size:11px;">来源 {_esc(data.get("source_count", 0))} 项</div>'
+    )
+    return "".join(lines)
+
+
+# --------------------------------------------------------------------------
+# 选项
+# --------------------------------------------------------------------------
+
+
+def network_options(
+    *,
+    physics: bool = True,
+    highlight_neighbors: bool = True,
+) -> Dict[str, object]:
+    """vis-network 配置。
+
+    ``layout.randomSeed`` 固定为 42：同一张图每次打开的初始布局一致，
+    便于截图对比与问题复现。
+    """
+    return {
+        "nodes": {
+            "shape": "dot",
+            "borderWidth": 1.2,
+            "borderWidthSelected": 2.6,
+            "font": {
+                "size": 13,
+                "face": FONTS["sans"],
+                "color": COLORS["ink"],
+                "strokeWidth": 3,
+                "strokeColor": COLORS["bg"],
+                "vadjust": 2,
+            },
+        },
+        "edges": {
+            "width": 1.1,
+            "selectionWidth": 2.2,
+            "arrowStrikethrough": False,
+            "smooth": {"enabled": True, "type": "continuous", "roundness": 0.2},
+            "color": {
+                "color": COLORS["line_strong"],
+                "highlight": COLORS["cinnabar"],
+                "hover": COLORS["cinnabar_soft"],
+                "opacity": 0.85,
+            },
+            "font": {
+                "size": 10,
+                "face": FONTS["sans"],
+                "color": COLORS["ink_mute"],
+                "strokeWidth": 3,
+                "strokeColor": COLORS["bg"],
+                "align": "middle",
+            },
+            "arrows": {"to": {"enabled": True, "scaleFactor": 0.42}},
+        },
+        "physics": {
+            "enabled": bool(physics),
+            "solver": "forceAtlas2Based",
+            "forceAtlas2Based": {
+                "gravitationalConstant": -62,
+                "centralGravity": 0.012,
+                "springLength": 130,
+                "springConstant": 0.09,
+                "damping": 0.55,
+                "avoidOverlap": 0.35,
+            },
+            "stabilization": {"enabled": True, "iterations": 320, "fit": True},
+            "minVelocity": 0.7,
+        },
+        "interaction": {
+            "hover": True,
+            "tooltipDelay": 110,
+            "hideEdgesOnDrag": False,
+            "navigationButtons": False,
+            "multiselect": False,
+            "selectConnectedEdges": True,
+        },
+        "layout": {"randomSeed": 42, "improvedLayout": True},
+    }
+
+
+# --------------------------------------------------------------------------
+# 生成
+# --------------------------------------------------------------------------
+
+
+def node_size(degree: int, max_deg: int) -> float:
+    """节点半径：按度数开方缩放，保证差异明显但不过分夸张。"""
+    if max_deg <= 0:
+        return 14.0
+    ratio = (max(degree, 0) / max_deg) ** 0.5
+    return round(10.0 + 16.0 * ratio, 2)
+
+
+def build_network_html(
+    graph: nx.MultiDiGraph,
+    *,
+    focus: Optional[str] = None,
+    height: int = 720,
+    physics: bool = True,
+    show_edge_labels: bool = False,
+    highlight_neighbors: bool = True,
+) -> str:
+    """生成离线自洽的交互式图谱 HTML。
+
+    Args:
+        graph: 待渲染的图（建议先经 :func:`~src.graph.builder.with_degree` 处理）。
+        focus: 需要突出显示的节点 id（加粗描边并放大）。
+        height: 画布高度（像素）。
+        physics: 是否启用力导向布局；关闭后为静态布局（大图更流畅）。
+        show_edge_labels: 是否常显关系标签（关系较多时建议关闭）。
+        highlight_neighbors: 点击节点时是否高亮其邻居并淡化其余节点。
+
+    Raises:
+        EmptyGraphError: 图中没有任何节点。
+        GraphError: 生成结果仍依赖外部资源。
+    """
+    if graph.number_of_nodes() == 0:
+        raise EmptyGraphError("图为空，无法生成图谱可视化。")
+
+    net = Network(
+        height=f"{int(height)}px",
+        width="100%",
+        directed=True,
+        notebook=False,
+        bgcolor=COLORS["bg"],
+        font_color=COLORS["ink"],
+        cdn_resources="in_line",
+        neighborhood_highlight=bool(highlight_neighbors),
+        heading="",
+    )
+
+    top_degree = max_degree(graph)
+
+    for node_id, data in graph.nodes(data=True):
+        palette = CATEGORY_COLORS.get(str(data.get("category", "")), FALLBACK_COLOR)
+        is_focus = node_id == focus
+        degree = graph.degree(node_id)
+        net.add_node(
+            node_id,
+            label=truncate_label(str(data.get("name", node_id))),
+            title=_node_tooltip(graph, node_id),
+            size=node_size(degree, top_degree) * (1.35 if is_focus else 1.0),
+            color={
+                "background": palette["bg"],
+                "border": COLORS["cinnabar"] if is_focus else palette["border"],
+                "highlight": {"background": palette["bg"], "border": COLORS["cinnabar"]},
+                "hover": {"background": palette["bg"], "border": COLORS["ink"]},
+            },
+            borderWidth=3.2 if is_focus else 1.2,
+            category=data.get("category_name", ""),
+            degree=degree,
+            shape="dot",
+        )
+
+    for u, v, key, data in graph.edges(keys=True, data=True):
+        attrs: Dict[str, object] = {
+            "id": key,
+            "title": _edge_tooltip(data),
+            "type": data.get("type", ""),
+            "label_type": data.get("type_name", ""),
+        }
+        if show_edge_labels:
+            label = str(data.get("label") or data.get("type_name") or "")
+            attrs["label"] = truncate_label(label, 8)
+        net.add_edge(u, v, **attrs)
+
+    options = network_options(
+        physics=physics,
+        highlight_neighbors=highlight_neighbors,
+    )
+    net.set_options(json.dumps(options, ensure_ascii=False))
+
+    return tighten_layout(strip_external_resources(net.generate_html()))
+
+
+def build_path_html(
+    graph: nx.MultiDiGraph,
+    node_ids: Sequence[str],
+    *,
+    height: int = 380,
+) -> str:
+    """只渲染一条关联路径所涉及的节点与关系，便于「聚焦看这条线」。
+
+    Args:
+        graph: 全图。
+        node_ids: 路径上的节点顺序。
+    """
+    if not node_ids:
+        raise EmptyGraphError("路径为空，无法渲染。")
+    keep = [n for n in node_ids if graph.has_node(n)]
+    if not keep:
+        raise EmptyGraphError("路径节点均不在图中，无法渲染。")
+    sub = graph.subgraph(keep).copy()
+    # 只保留路径上相邻两两之间的关系，避免出现「捷径」干扰视觉判断
+    allowed = {(a, b) for a, b in zip(keep, keep[1:])}
+    pruned = nx.MultiDiGraph()
+    pruned.add_nodes_from((n, dict(d)) for n, d in sub.nodes(data=True))
+    for u, v, k, data in sub.edges(keys=True, data=True):
+        if (u, v) in allowed or (v, u) in allowed:
+            pruned.add_edge(u, v, key=k, **dict(data))
+    return build_network_html(pruned, height=height, physics=True)
+
+
+def graph_legend_html(graph: nx.MultiDiGraph) -> str:
+    """图例 HTML：按分类展示颜色与实体数量（数值取自真实图）。"""
+    counts: Dict[str, int] = {}
+    names: Dict[str, str] = {}
+    for _, data in graph.nodes(data=True):
+        cid = str(data.get("category", ""))
+        counts[cid] = counts.get(cid, 0) + 1
+        names[cid] = str(data.get("category_name", cid))
+    rows = []
+    for cid, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
+        color = CATEGORY_COLORS.get(cid, FALLBACK_COLOR)["bg"]
+        rows.append(
+            '<span class="hz-legend__item">'
+            f'<span class="hz-legend__dot" style="background:{color};"></span>'
+            f"{_esc(names.get(cid, cid))}"
+            f'<span class="hz-legend__count">{count}</span></span>'
+        )
+    return f'<div class="hz-legend">{"".join(rows)}</div>'
+
+
+def path_chain_html(graph: nx.MultiDiGraph, path: PathResult) -> str:
+    """把关联路径渲染成可读链条：``西递 —相关→ 徽州民居 ←属于— 承志堂``。
+
+    方向如实呈现：``reversed=True`` 的一段渲染为 ``←标签—``，
+    以区别于关系真实方向与路径行进方向一致的情况。
+    """
+    if not isinstance(path, PathResult):
+        raise GraphError("path_chain_html 需要 PathResult 对象。")
+    if not path.nodes:
+        return ""
+
+    parts: List[str] = []
+    for idx, node_id in enumerate(path.nodes):
+        name = _esc(graph.nodes[node_id].get("name", node_id)) if graph.has_node(node_id) else _esc(node_id)
+        cls = "hz-path__node hz-path__node--end" if idx in (0, len(path.nodes) - 1) else "hz-path__node"
+        parts.append(f'<span class="{cls}">{name}</span>')
+        if idx < len(path.edges):
+            edge = path.edges[idx]
+            label = _esc(edge.label or edge.type_name or edge.type)
+            if edge.reversed:
+                parts.append(
+                    f'<span class="hz-path__arrow">←</span>'
+                    f'<span class="hz-path__rel">{label}</span>'
+                    f'<span class="hz-path__arrow">—</span>'
+                )
+            else:
+                parts.append(
+                    f'<span class="hz-path__arrow">—</span>'
+                    f'<span class="hz-path__rel">{label}</span>'
+                    f'<span class="hz-path__arrow">→</span>'
+                )
+    return f'<div class="hz-path">{"".join(parts)}</div>'
+
+
+__all__ = [
+    "CATEGORY_COLORS",
+    "FALLBACK_COLOR",
+    "category_palette",
+    "strip_external_resources",
+    "tighten_layout",
+    "truncate_label",
+    "network_options",
+    "node_size",
+    "build_network_html",
+    "build_path_html",
+    "graph_legend_html",
+    "path_chain_html",
+]

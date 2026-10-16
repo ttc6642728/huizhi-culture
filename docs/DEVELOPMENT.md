@@ -46,18 +46,61 @@
 **理由**：既满足「优先 Dify」的要求，又保证任何环境下都能演示完整问答链路，且**不会把本地检索式包装成
 大模型能力**——界面会明确显示当前生效的后端。
 
-### 2.2 PyVis 使用内联资源模式
+### 2.2 图谱必须用 MultiDiGraph，而不是 DiGraph
 
-PyVis 默认从 CDN 拉取 `vis-network` 的 JS/CSS，断网时图谱会白屏。
-因此在 `src/graph/visualize.py` 中统一使用 `cdn_resources="in_line"`，把前端资源内联进生成的 HTML，
-保证**离线可用**。
+**背景**：数据中存在同向平行边——「渐江 → 新安画派」同时有 `founder_of`（创立）与
+`representative_of`（代表）两种关系。
 
-### 2.3 Graphviz 不作为必需依赖
+**决策**：`src/graph/builder.py::build_graph` 使用 `nx.MultiDiGraph`。
+
+**理由**：`nx.DiGraph` 会把同向平行边**静默合并**，关系数从 150 变成 149——
+图谱与源数据不一致，属于数据失真。`tests/test_graph.py` 中不仅有
+`test_graph_is_multidigraph`，还有 `test_parallel_edges_are_preserved`，
+并直接从渲染产物里把 JS 数据载荷解析出来核对边数必须等于 150。
+
+**代价与处理**：多重图的连通性、最短路、聚类等算法在无向简单视图
+（`analysis.to_undirected_simple`，折叠平行边）上计算；路径展示时若某段只有反向关系，
+会标记 `reversed=True` 并渲染为 `A ←标签— B`，不伪装成同向。
+
+### 2.3 PyVis 的离线自洽：不止是 `cdn_resources="in_line"`
+
+PyVis 默认从 CDN 拉取 `vis-network` 的 JS/CSS，断网时图谱会白屏；
+但**即使设置了 `cdn_resources="in_line"` 仍不够**——实测发现 `pyvis 0.3.2` 的
+`templates/template.html` 第 41–51 行会**无条件**（不受 `cdn_resources` 参数控制）
+引入 Bootstrap 5 的 CSS 与 JS：
+
+```html
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css" ...>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js" ...>
+```
+
+**决策**：生成后统一清洗，并**把「无外部依赖」变成运行时可断言的约束**：
+
+1. `cdn_resources="in_line"` 内联 `vis-network` 的 CSS/JS（约 690 KB）；
+2. `strip_external_resources()` 移除模板遗留的外部 `<script src>` / `<link href>`；
+3. 清洗后立即扫描，若仍存在外部引用（含 `//cdn...` 协议相对写法）则**抛错**，
+   宁可报错也不交付一个「看着能用、断网就白屏」的页面；
+4. `tighten_layout()` 再处理模板的另外两个问题：`heading` 为空时仍渲染的两处空
+   `<h1>`（合计约 160 px 无效高度）与 iframe 内 `body` 的默认外边距。
+
+**验证**：`tests/test_graph.py` 断言产物中不含任何外部 `script/link`、不含
+`@import` / `@font-face` / 外部 `url()`，且 `len(html) > 400_000`（确认库确实被内联）。
+
+### 2.4 用 `st.iframe` 而非已废弃的 `components.html`
+
+Streamlit 1.66 起 `st.components.v1.html` 进入废弃流程（提示改用 `st.iframe`）。
+`st.iframe` 的入参判定顺序为「Path 对象 → 绝对 URL → 本地文件 → 相对 URL → 原始 HTML」，
+我们的 HTML 串既不以 `http(s)://` / `data:` 开头、也不含路径特征，会走 `srcdoc` 分支
+直接内嵌，不产生任何网络请求。该假设由
+`test_network_html_is_not_mistaken_for_a_url` 钉死——一旦产物被误判为 URL，
+页面会变成加载一个不存在的地址，测试会立即失败。
+
+### 2.5 Graphviz 不作为必需依赖
 
 `pygraphviz` / `graphviz` 需要系统级二进制，跨平台安装成本高。本项目图谱渲染使用 PyVis，
 布局算法由 NetworkX 提供，无需 Graphviz。
 
-### 2.4 依赖安装使用非清华镜像
+### 2.6 依赖安装使用非清华镜像
 
 本机环境下 `pypi.org` 不可达，`pypi.tuna.tsinghua.edu.cn` 对 pip 客户端返回 `403 Forbidden`
 （同一 URL 用 curl / urllib 访问均为 `200`）。经实测 **阿里云、腾讯云、华为云镜像对 pip 正常**。
@@ -68,7 +111,7 @@ PyVis 默认从 CDN 拉取 `vis-network` 的 JS/CSS，断网时图谱会白屏�
 pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 ```
 
-### 2.5 数据真实性约束
+### 2.7 数据真实性约束
 
 - 所有文化事实在写入 `data/*.json` 前需经检索核实，并在 `sources.json` 中登记来源 URL / 文献。
 - 无法核实的条目**不写入**数据集。
@@ -87,9 +130,10 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 | `src/ui/pages/*.py` | 各页面渲染入口，统一导出 `render()` |
 | `src/data/loader.py` | 读取并校验实体 / 关系 / 来源 JSON，给出可读的错误信息 |
 | `src/data/repository.py` | 搜索、分类筛选、详情查询、邻居查询、子图与路径 |
-| `src/graph/builder.py` | 由数据构建 NetworkX 图（实体为节点、关系为边） |
-| `src/graph/analysis.py` | 中心度、连通分量、最短路径、整体统计 |
-| `src/graph/visualize.py` | 生成可交互 HTML 图谱（离线内联资源、支持聚焦与高亮） |
+| `src/graph/builder.py` | 构建 `MultiDiGraph`（实体为节点、关系为边，保留同向平行边）；分类/关系类型筛选、ego 子图 |
+| `src/graph/analysis.py` | 结构统计、度数/介数中心性排名、连通分量、最短关联路径、模块度聚类 |
+| `src/graph/visualize.py` | 生成离线自洽的交互式 HTML（内联资源、资源清洗、图例、路径链条） |
+| `src/graph/runtime.py` | 图谱与数据集的界面运行时缓存（保持上述三模块不依赖 Streamlit） |
 | `src/qa/retriever.py` | jieba 分词 + BM25 资料检索，返回带来源的片段 |
 | `src/qa/prompt.py` | 构造带编号引用的提示词，约束模型只依据资料作答 |
 | `src/qa/engine.py` | 三层后端实现与自动降级、异常与超时处理 |
@@ -118,6 +162,9 @@ data/sources.json
 - `entities.id`、`relations.id`、`sources.id` 全局唯一，采用小写英文与下划线。
 - 每条实体与每条关系**必须**带非空 `source_ids`，且引用的 id 必须在 `sources.json` 中存在。
 - 关系方向固定为 `source → target`；`relation_types[].inverse_name` 用于在界面上以当前实体为主语反向展示。
+- 校验保证 `(source, target, type)` 三元组唯一，但**同一对实体在同一方向上可以存在多种关系**
+  （如「渐江 → 新安画派」同时是 `founder_of` 与 `representative_of`），
+  因此图谱建模必须使用 `MultiDiGraph`，详见 2.2。
 - `attributes` 为字符串键值对，用于结构化展示；关键事实（年份、批次、数量）优先放进 `attributes` 以便测试断言。
 - 不做「孤立实体」：校验要求每个实体至少有一条关系。
 
@@ -259,3 +306,87 @@ docs/DATA_SOURCES.md      数据来源与核实说明
 实现 `src/graph/builder.py`（NetworkX 建图）、`analysis.py`（中心度、连通分量、最短路径、整体统计）、
 `visualize.py`（PyVis 交互图，`cdn_resources="in_line"` 保证离线可用，支持聚焦与高亮），
 接入知识图谱页面，配套 `tests/test_graph.py`。
+
+### P2 知识图谱（已完成）
+
+**新增文件**
+
+```
+src/graph/builder.py          多重有向图建模、筛选、ego 子图（不依赖 Streamlit）
+src/graph/analysis.py         结构统计、中心性排名、连通分量、最短关联路径、聚类
+src/graph/visualize.py        离线自洽的交互式 HTML、资源清洗、图例、路径链条
+src/graph/runtime.py          界面运行时缓存（st.cache_resource 适配层）
+src/ui/pages/graph.py         知识图谱页
+scripts/graph_report.py       图谱验证报告 CLI（支持 --focus / --path / --export）
+tests/test_graph.py           图谱测试（60 项）
+src/ui/theme.py（修改）        新增图例、路径链条、排名表、步骤列表样式
+src/ui/components.py（修改）   新增 table_html；card_html 补充 flat 参数
+src/ui/pages/home.py（修改）   新增「知识图谱概况」，模块进度表补入图谱模块
+app.py（修改）                侧边栏版本说明更新为已完成阶段
+```
+
+**图谱结构（实时计算结果）**
+
+| 指标 | 值 |
+|---|---|
+| 节点 / 边 | 90 / 150（与数据完全一致，平行边未丢失） |
+| 图类型 | `MultiDiGraph` |
+| 连通分量 | 1（全部 90 个实体同属一个关联网络） |
+| 网络直径 | 6 |
+| 平均最短关联距离 | 2.939 |
+| 图密度 | 0.0367 |
+| 孤立实体 | 0 |
+
+**核心枢纽**：度数最高为「徽州」（41 条，均为指向它的 `located_in`），与「徽商」（16）、
+「徽州民居」（11）、「徽菜」（11）。介数中心性最高同样是「徽州」（0.7488），
+其次为「徽菜」（0.2407）、「徽商」（0.1442）——度数衡量「关系多」，介数衡量「跨领域桥梁作用」。
+
+**文化聚类**：基于模块度优化的社区发现得到 8 个聚类，与徽州文化的实际板块高度吻合——
+建筑聚落群（宏村、西递、天井、马头墙…）、名人工艺群、徽商与医学、牌坊与宗族、
+徽菜、理学与书院、民俗演艺、文房四宝。该结果标注为**探索性分析**，界面与文档均不作定论。
+
+**知识图谱页功能**
+
+| 区块 | 内容 |
+|---|---|
+| 结构指标 | 节点、边、连通分量、密度、平均最短关联、直径、度数分布、孤立实体 |
+| 图谱筛选与布局 | 按分类 / 关系类型多选筛选；聚焦实体 + 半径 1–3；力导布局开关；关系标签开关 |
+| 交互画布 | 拖拽平移、滚轮缩放、悬停查看简介与来源数、点击节点高亮邻居、按分类着色、度数决定节点大小 |
+| 聚焦实体 | 该实体的出入关系明细（方向 / 类型 / 说明 / 来源数）+ 关联子图 |
+| 关联路径 | 任意两实体的最短关联线路链条、逐段关系明细、等长备选线路、线路单独可视化 |
+| 核心枢纽 | 度数排名、介数排名、关系类型分布 |
+| 文化聚类 | 每个聚类的规模、内聚度、涉及分类与成员标签 |
+
+**筛选后的空态处理**：分类之间往往通过少数枢纽实体相连，因此单独筛选「古村落」时
+会出现「10 个实体、0 条关系」。界面在此情形下显示空状态并解释原因，
+不渲染一堆游离圆点冒充图谱。
+
+**可视化产物的实测数据**
+
+| 项目 | 值 |
+|---|---|
+| 单张全图 HTML | 约 830 KB（其中约 690 KB 为内联的 vis-network CSS/JS） |
+| 生成耗时 | 约 0.06 s（有缓存） |
+| 外部资源引用 | 0 |
+| 外部 `url()` / `@import` / `@font-face` | 0 |
+| 布局随机种子 | 固定 42（同一张图初始布局可复现） |
+
+**验证**
+
+- `pytest`：133 项全部通过（P0 的 13 项 + P1 的 59 项 + P2 的 61 项），无警告。
+- `python scripts/graph_report.py`：输出「全部检查通过」（建图保真 + 离线自洽）。
+- `python scripts/graph_report.py --export outputs/huizhou-knowledge-graph.html`：
+  导出可独立用浏览器打开的交互式图谱（约 830 KB，单文件，无需服务器与网络）。
+
+**遗留问题**
+
+- 仍存在 0 个孤立实体，但「徽州」的 41 条关系全部为入边、无出边，属于数据特征而非缺陷；
+  若后续希望图谱在方向上更均衡，可为其补充部分出向关系。
+- 图片素材仍未下载（计划在 P3 阶段处理）。
+- 图谱页在实体数量大幅增长（例如超过 300 节点）时，一次性渲染全图会偏重；
+  届时需要引入按分类分片或服务端预布局。当前 90 节点规模无需处理。
+
+**下一阶段（P3）**
+
+实现文化百科列表页（关键词搜索 + 分类筛选）、实体详情页（结构化属性、真实关联关系、
+可点击来源）、首页文化探索区，并下载自由授权的徽州建筑图片来源，配套 `assets/images/CREDITS.md`。

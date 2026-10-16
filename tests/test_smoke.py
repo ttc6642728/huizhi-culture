@@ -38,12 +38,30 @@ def test_default_page_renders_navigation(app: AppTest) -> None:
 
 def test_pending_page_explains_its_phase(app: AppTest) -> None:
     """未实现页面必须如实说明所处阶段，而不是显示空壳内容。"""
+    pending = {"explore": "P3", "ask": "P4", "about": "P5"}
+    for page_key, phase in pending.items():
+        app.run()
+        app.session_state["page"] = page_key
+        app.run()
+        assert not app.exception, f"{page_key} 页抛出异常：{app.exception}"
+        body = " ".join(m.value for m in app.markdown)
+        assert phase in body, f"{page_key} 页未标注交付阶段 {phase}"
+        assert "尚未实现" in body or "计划在" in body, f"{page_key} 页未说明尚未实现"
+
+
+def test_graph_page_renders_real_content(app: AppTest) -> None:
+    """已交付的图谱页必须渲染真实数据，而不是「未实现」占位。"""
     app.run()
     app.session_state["page"] = "graph"
     app.run()
-    assert not app.exception
+    assert not app.exception, f"图谱页抛出异常：{app.exception}"
     body = " ".join(m.value for m in app.markdown)
-    assert "P2" in body, "未实现页面未标注交付阶段"
+    assert "知识图谱" in body
+    assert "尚未实现" not in body
+    # 概览指标必须存在，且数值来自真实图谱（90 个实体 / 150 条关系）
+    metrics = {m.label: m.value for m in app.metric}
+    assert metrics.get("实体节点") == "90"
+    assert metrics.get("关系连线") == "150"
 
 
 def test_unknown_page_falls_back_to_default(app: AppTest) -> None:

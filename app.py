@@ -119,7 +119,7 @@ with st.sidebar:
         st.caption("未检测到模型凭证，已自动使用本地检索式后端。")
 
     st.markdown("<hr/>", unsafe_allow_html=True)
-    st.caption(f"v{__version__}　·　P0 脚手架")
+    st.caption(f"v{__version__}　·　已完成 P0 脚手架 / P1 数据层 / P2 知识图谱")
 
 
 # --------------------------------------------------------------------------
