@@ -8,6 +8,10 @@
 - 架构与模块职责
 - 模块划分（就绪状态由程序实时探测）
 - 开发原则
+- 环境自检
+- 运行依赖（<n>/<n> 已安装）
+- 文化数据
+- 模块交付进度
 
 # style classes used by this page (sorted)
 - hz-card
@@ -52,4 +56,4 @@
 - nav_home|文化探索
 
 # content markdown blocks
-- 27
+- 32

@@ -423,6 +423,40 @@ def answer_from(self, question, passages, *, directive="", backends=None, starte
 故未改动清单；等免费额度恢复后重跑 `python scripts/fetch_images.py` 即可，
 把关规则已就位，取回的候选会自动按三条门槛筛一遍。
 
+### 2.23 界面按「谁在看」重新分层：自检归关于页、首页给访客（交付后调整）
+
+**背景**：项目跑起来之后回头看首页，发现它把两类读者混在了一页——
+访客想看「这是什么、有哪些内容」，而依赖版本、解释器绝对路径、模块交付进度
+是**开发者视角**的信息；页尾还挂着一条「当前进度：P5 …」的阶段播报，会随迭代过期。
+
+**决策**
+
+1. **自检信息归位**：「环境自检」（运行依赖 / 文化数据 / 模块交付进度）整块移到
+   「关于项目」页——那一页本来就在讲架构与开发原则，自检放在这里才是同一个语境。
+   首页保留「问答后端」与「运行环境」两张状态卡：前者告诉用户问题由谁回答，后者是排障入口。
+2. **首页给访客**：删除页面底部的阶段进度播报（它描述的是开发过程，不是产品内容），
+   并在顶部加一张**已署名的徽州代表图片**作为主视觉。
+3. **百科页默认顺序改为「有配图优先」**：有配图的条目可读性更好，更适合当浏览入口。
+   实现上只用 `list.sort` 的稳定性 + 0/1 键，因此同类内部保持数据原顺序；
+   **检索时不做这种重排**——相关性必须优先于「有没有图」。
+
+**主视觉为什么选「徽派建筑」而不是黄山**：粉墙黛瓦是徽州最具辨识度的**人文**符号，
+与「文化探索」的定位一致；黄山更偏自然景观。图片取自图片库（`HERO_IMAGE_ENTITY =
+"huipai_architecture"`），因此自动继承同一套署名机制（作者 / 许可 / 来源页面），
+不额外维护一份署名表。
+
+**遗留可插拔性**：主视觉的实体 id 是一个常量，换图只改一行；
+配错 id 时页面会**静默**少一张图（不报错），所以专门加了一条断言
+——`HERO_IMAGE_ENTITY` 必须真在图片库中、文件存在、有作者、来源是 Commons。
+
+**验证**
+
+- `pytest tests/test_smoke.py`：新增 5 项（首页主视觉渲染与署名、主视觉实体可核查、
+  自检已从首页移出且出现在关于页、百科页默认顺序有图优先、检索与显式排序不受影响）。
+- `tests/snapshots/{home,about,explore}.txt` 三份结构基线**有意**重新生成，
+  差异经逐行核对：home 少了 4 个自检区块、多了 `hz-figure`；about 多出这 4 个区块；
+  explore 第一页的实体卡片换成了有图的那批。
+
 ---
 
 ## 三、模块职责
@@ -435,7 +469,7 @@ def answer_from(self, question, passages, *, directive="", backends=None, starte
 | `src/ui/components.py` | 卡片、面包屑、分类标签、关系行、来源行、图片图注、区块标题、空/错状态等 HTML 组件 |
 | `src/ui/nav.py` | 导航模型唯一来源：可见入口、隐藏页归属、路由解析、高亮判定、跳转 |
 | `src/ui/datastore.py` | 界面共享数据入口，缓存 `repository()` 与 `images()`；问答引擎复用缓存的检索索引 |
-| `src/ui/pages/*.py` | 各页面渲染入口，统一导出 `render()` |
+| `src/ui/pages/*.py` | 各页面渲染入口，统一导出 `render()`；首页含徽州主视觉，百科页默认把有配图的实体排在前面 |
 | `src/data/loader.py` | 读取并校验实体 / 关系 / 来源 JSON，给出可读的错误信息 |
 | `src/data/repository.py` | 搜索、分类筛选、详情查询、邻居查询、子图与路径 |
 | `src/data/images.py` | 实体图片库与署名；清单/文件缺失时安全降级 |
@@ -452,7 +486,7 @@ def answer_from(self, question, passages, *, directive="", backends=None, starte
 | `src/eval/metrics.py` | 评估指标（Recall@K / Precision@K / Hit@K / MRR / AP / nDCG@K），纯函数、公式可手算 |
 | `src/eval/dataset.py` | 人工标注集的模型、加载与严格校验（引用不存在的实体直接报错） |
 | `src/eval/runner.py` | 在标注集上评估检索与回答，产出结构化报告与按标签分组统计 |
-| `src/ui/pages/about.py` | 关于项目页：平台概览、可现场运行的工作流演示、质量评估、架构与开发原则 |
+| `src/ui/pages/about.py` | 关于项目页：平台概览、可现场运行的工作流演示、质量评估、架构与开发原则、**实时环境自检** |
 | `scripts/fetch_images.py` | 从 Wikimedia Commons 抓取 CC 授权图片（中转池 + 许可白名单 + 检索/排除正则过滤） |
 | `scripts/evaluate.py` | 质量评估 CLI：离线跑检索与问答评估，可 `--live` 换真实后端，支持 `--json` |
 
@@ -544,6 +578,7 @@ docs/DEVELOPMENT.md
 - 基于 `importlib` 的页面路由，未实现页面如实显示所处阶段
 - 问答后端探测与降级逻辑（`src/config.py`）
 - 首页实时环境自检：依赖安装情况、数据文件状态、模块交付进度、当前后端
+  （交付后已调整：自检部分移至「关于项目」页，见 2.23）
 
 **验证**
 
@@ -1047,7 +1082,7 @@ tests/test_image_library.py    新增把关断言（清单每张图必须过自�
 
 **验证**
 
-- `pytest`：**385 个测试函数 / 432 个用例全部通过**（P0–P6 累计，24.53s），无警告，**全程不联网**。
+- `pytest`：**390 个测试函数 / 437 个用例全部通过**（P0–P6 累计 + 交付后调整，27.8s），无警告，**全程不联网**。
   其中 P6 新增 `test_eval.py`（39 项）、`test_qa_dify_http.py`（15 项）、
   `test_ui_snapshot.py`（10 项）、`test_image_library.py` 补 12 项，
   `test_graph.py` / `test_qa_engine.py` / `test_agent_workflow.py` / `test_components.py` 亦有增补。

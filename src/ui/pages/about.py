@@ -1,9 +1,11 @@
-"""关于项目：平台说明、架构与模块职责，以及**可真实运行**的智能体工作流演示。
+"""关于项目：平台说明、架构与模块职责、环境自检，以及**可真实运行**的智能体工作流演示。
 
-这一页承担两件事：
+这一页承担三件事：
 
 1. 把项目的定位、技术栈、模块划分与开发原则讲清楚（答辩与交接时最常被问到的部分）；
-2. 让「可追踪智能体工作流」变成可以当场点、当场看的东西——输入一个问题，
+2. 收拢开发者自检信息——运行依赖、数据文件与模块交付进度，全部由程序实时探测，
+   因此首页可以只保留面向访客的内容；
+3. 让「可追踪智能体工作流」变成可以当场点、当场看的东西——输入一个问题，
    页面会把六个步骤的**输入、输出、耗时与状态**逐步列出来，包括在哪一步中止、
    核查为什么没通过。所有数字都来自真实运行，不是示意文案。
 """
@@ -60,9 +62,56 @@ _PRINCIPLES = [
 ]
 
 
+#: 环境自检：需要检查的运行依赖 -> 用途说明
+_REQUIRED_PACKAGES: List[Tuple[str, str]] = [
+    ("streamlit", "Web 界面"),
+    ("networkx", "知识图谱建模"),
+    ("pyvis", "交互式图谱渲染"),
+    ("jieba", "中文分词（检索）"),
+    ("requests", "调用 Dify / 大模型接口"),
+    ("dotenv", "读取 .env 配置"),
+    ("pytest", "测试框架"),
+]
+
+#: 环境自检：应存在的核心模块 -> 职责 -> 交付阶段
+_CORE_MODULES: List[Tuple[str, str, str]] = [
+    ("src.data.loader", "数据加载与校验", "P1"),
+    ("src.data.repository", "实体查询与检索", "P1"),
+    ("src.graph.builder", "图谱建模", "P2"),
+    ("src.graph.analysis", "图谱分析", "P2"),
+    ("src.graph.visualize", "图谱可视化", "P2"),
+    ("src.ui.pages.graph", "知识图谱页", "P2"),
+    ("src.data.images", "图片库与署名", "P3"),
+    ("src.ui.pages.explore", "文化百科页", "P3"),
+    ("src.ui.pages.detail", "实体详情页", "P3"),
+    ("src.qa.retriever", "资料检索（BM25）", "P4"),
+    ("src.qa.prompt", "提示词与引用约束", "P4"),
+    ("src.qa.engine", "问答引擎（三层降级）", "P4"),
+    ("src.ui.pages.ask", "AI 问答页", "P4"),
+    ("src.agent.workflow", "智能体工作流", "P5"),
+    ("src.ui.pages.about", "关于项目页", "P5"),
+]
+
+#: 环境自检：数据文件 -> 说明
+_DATA_FILES = [
+    (config.ENTITIES_FILE, "文化实体"),
+    (config.RELATIONS_FILE, "实体关系"),
+    (config.SOURCES_FILE, "参考资料"),
+]
+
+_STATUS_MARK = {"ok": "已就绪", "todo": "待开发", "missing": "缺失"}
+
+
 def _module_ready(dotted: str) -> bool:
     try:
         return importlib.util.find_spec(dotted) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def _pkg_installed(name: str) -> bool:
+    try:
+        return importlib.util.find_spec(name) is not None
     except (ImportError, ValueError):
         return False
 
@@ -232,6 +281,74 @@ def _render_architecture() -> None:
 
     ui.render_section("开发原则")
     st.markdown("\n".join(f"{i}. {p}" for i, p in enumerate(_PRINCIPLES, start=1)))
+
+
+# --------------------------------------------------------------------------
+# 区块：环境自检
+# --------------------------------------------------------------------------
+
+
+def _render_environment() -> None:
+    """运行环境自检：依赖安装、数据文件与模块交付进度。
+
+    每一项都由 ``importlib`` / ``Path`` 实时探测，不写死任何「已完成 / 待开发」标签；
+    原先展示在首页，现统一收进「关于项目」页，首页只保留面向访客的内容。
+    """
+    ui.render_section(
+        "环境自检",
+        "以下结果由程序实时检测，不是写死的示意内容；"
+        "按职责分层的模块清单见上方「架构与模块职责」，此处按**交付阶段**列出。",
+    )
+
+    # 运行依赖
+    dep_rows = []
+    ok_count = 0
+    for pkg, purpose in _REQUIRED_PACKAGES:
+        ok = _pkg_installed(pkg)
+        ok_count += int(ok)
+        mark = (
+            f'<span class="hz-tag hz-tag--accent">{_STATUS_MARK["ok"]}</span>'
+            if ok
+            else f'<span class="hz-tag">{_STATUS_MARK["missing"]}</span>'
+        )
+        dep_rows.append(
+            f'<div class="hz-kv"><span class="hz-kv__k" style="min-width:7rem;">'
+            f"<code>{ui.esc(pkg)}</code></span>"
+            f'<span class="hz-kv__v">{ui.esc(purpose)}　{mark}</span></div>'
+        )
+    ui.render(
+        ui.card_html(
+            f"运行依赖（{ok_count}/{len(_REQUIRED_PACKAGES)} 已安装）",
+            "".join(dep_rows),
+        )
+    )
+
+    # 数据文件
+    data_rows = []
+    for path, label in _DATA_FILES:
+        exists = path.exists()
+        size = f"{path.stat().st_size:,} 字节" if exists else "文件不存在"
+        mark = (
+            f'<span class="hz-tag hz-tag--accent">{_STATUS_MARK["ok"]}</span>'
+            if exists
+            else f'<span class="hz-tag">{_STATUS_MARK["todo"]}</span>'
+        )
+        data_rows.append(
+            ui.kv_row(label, f'<code>{ui.esc(path.name)}</code>　{ui.esc(size)}　{mark}')
+        )
+    ui.render(ui.card_html("文化数据", "".join(data_rows)))
+
+    # 模块交付进度
+    mod_rows = []
+    for dotted, label, phase in _CORE_MODULES:
+        ready = _module_ready(dotted)
+        mark = (
+            f'<span class="hz-tag hz-tag--accent">{_STATUS_MARK["ok"]}</span>'
+            if ready
+            else f'<span class="hz-tag">{phase} 阶段</span>'
+        )
+        mod_rows.append(ui.kv_row(label, f"<code>{ui.esc(dotted)}</code>　{mark}"))
+    ui.render(ui.card_html("模块交付进度", "".join(mod_rows)))
 
 
 # --------------------------------------------------------------------------
@@ -535,6 +652,9 @@ def render() -> None:
 
     st.markdown("<div style='height:.6rem;'></div>", unsafe_allow_html=True)
     _render_architecture()
+
+    st.markdown("<div style='height:.6rem;'></div>", unsafe_allow_html=True)
+    _render_environment()
 
     cols = st.columns([1, 1, 1, 1, 3], gap="small")
     with cols[0]:

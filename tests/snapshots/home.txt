@@ -6,22 +6,17 @@
 - 问答后端
 - 后端状态
 - 运行环境
-- 环境自检
-- 运行依赖（<n>/<n> 已安装）
-- 文化数据
-- 模块交付进度
 - 开始探索
 
 # style classes used by this page (sorted)
 - hz-card
 - hz-card--flat
+- hz-figure
 - hz-footer
 - hz-hero
 - hz-kv
 - hz-section-sub
 - hz-section-title
-- hz-tag
-- hz-tag--accent
 
 # widgets (sorted)
 - button|home_go_agent|运行智能体工作流
@@ -43,4 +38,4 @@
 - nav_home|文化探索
 
 # content markdown blocks
-- 18
+- 15

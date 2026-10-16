@@ -1,14 +1,13 @@
-"""徽知首页：项目引导 + 数据概况 + 图谱概况 + 环境自检 + 模块交付进度。
+"""徽知首页：项目引导 + 徽州主视觉 + 数据概况 + 图谱概况 + 快捷入口。
 
-页面上的每个数字都来自实时加载的数据或实时计算的图谱，
-模块进度用 ``importlib`` 真实探测，不写死任何「已完成 / 待开发」标签。
+页面上出现的每个数字都来自实时加载的数据或实时计算的图谱，不写死；
+运行依赖、数据文件与模块交付进度等**开发者自检信息**统一放在「关于项目」页，
+首页只保留面向访客的内容。
 """
 
 from __future__ import annotations
 
-import importlib.util
 import sys
-from typing import List, Tuple
 
 import streamlit as st
 
@@ -20,113 +19,37 @@ from src.graph import runtime as graph_runtime
 from src.ui import components as ui
 from src.ui import datastore, nav
 
-
-#: 需要检查的运行依赖 -> 用途说明
-_REQUIRED_PACKAGES: List[Tuple[str, str]] = [
-    ("streamlit", "Web 界面"),
-    ("networkx", "知识图谱建模"),
-    ("pyvis", "交互式图谱渲染"),
-    ("jieba", "中文分词（检索）"),
-    ("requests", "调用 Dify / 大模型接口"),
-    ("dotenv", "读取 .env 配置"),
-    ("pytest", "测试框架"),
-]
-
-#: 应存在的核心模块（随阶段推进逐步实现）
-_CORE_MODULES: List[Tuple[str, str, str]] = [
-    ("src.data.loader", "数据加载与校验", "P1"),
-    ("src.data.repository", "实体查询与检索", "P1"),
-    ("src.graph.builder", "图谱建模", "P2"),
-    ("src.graph.analysis", "图谱分析", "P2"),
-    ("src.graph.visualize", "图谱可视化", "P2"),
-    ("src.ui.pages.graph", "知识图谱页", "P2"),
-    ("src.data.images", "图片库与署名", "P3"),
-    ("src.ui.pages.explore", "文化百科页", "P3"),
-    ("src.ui.pages.detail", "实体详情页", "P3"),
-    ("src.qa.retriever", "资料检索（BM25）", "P4"),
-    ("src.qa.prompt", "提示词与引用约束", "P4"),
-    ("src.qa.engine", "问答引擎（三层降级）", "P4"),
-    ("src.ui.pages.ask", "AI 问答页", "P4"),
-    ("src.agent.workflow", "智能体工作流", "P5"),
-    ("src.ui.pages.about", "关于项目页", "P5"),
-]
-
-#: 数据文件 -> 说明
-_DATA_FILES = [
-    (config.ENTITIES_FILE, "文化实体"),
-    (config.RELATIONS_FILE, "实体关系"),
-    (config.SOURCES_FILE, "参考资料"),
-]
-
-_STATUS_MARK = {"ok": "已就绪", "todo": "待开发", "missing": "缺失"}
+#: 首页主视觉选用的实体图片（取自 assets/images/manifest.json，可核查、已署名）
+#: 选「徽派建筑」：粉墙黛瓦是徽州最具辨识度的视觉符号，与平台的文化主题最贴合。
+HERO_IMAGE_ENTITY = "huipai_architecture"
 
 
-def _pkg_installed(name: str) -> bool:
-    try:
-        return importlib.util.find_spec(name) is not None
-    except (ImportError, ValueError):
-        return False
+def _render_hero_image() -> None:
+    """首页主视觉：一张已署名的徽州代表图片。
 
+    图片来自与详情页相同的图片库，因此同样带作者、许可与来源页面，可点击核对；
+    没有图片（或图片清单缺失）时**整块不渲染**，页面照常工作，不以占位图充数。
+    """
+    image = datastore.images().get(HERO_IMAGE_ENTITY)
+    if image is None or not image.exists:
+        return
 
-def _module_ready(dotted: str) -> bool:
-    try:
-        return importlib.util.find_spec(dotted) is not None
-    except (ImportError, ValueError):
-        return False
-
-
-def _render_checklist() -> None:
-    ui.render_section("环境自检", "以下结果由程序实时检测，不是写死的示意内容。")
-
-    # 运行依赖
-    dep_rows = []
-    ok_count = 0
-    for pkg, purpose in _REQUIRED_PACKAGES:
-        ok = _pkg_installed(pkg)
-        ok_count += int(ok)
-        mark = (
-            f'<span class="hz-tag hz-tag--accent">{_STATUS_MARK["ok"]}</span>'
-            if ok
-            else f'<span class="hz-tag">{_STATUS_MARK["missing"]}</span>'
+    _, mid, _ = st.columns([1, 4, 1], gap="medium")
+    with mid:
+        try:
+            st.image(str(image.path), use_container_width=True)
+        except Exception as exc:  # noqa: BLE001 - 图片损坏不应让整页崩溃
+            ui.render_error("首页图片无法显示", f"本地图片读取失败：{exc}")
+            return
+        ui.render(
+            ui.figure_caption(
+                caption=image.caption,
+                credit=image.credit,
+                source_url=image.source_url,
+                license_url=image.license_url,
+            )
         )
-        dep_rows.append(
-            f'<div class="hz-kv"><span class="hz-kv__k" style="min-width:7rem;">'
-            f"<code>{ui.esc(pkg)}</code></span>"
-            f'<span class="hz-kv__v">{ui.esc(purpose)}　{mark}</span></div>'
-        )
-    ui.render(
-        ui.card_html(
-            f"运行依赖（{ok_count}/{len(_REQUIRED_PACKAGES)} 已安装）",
-            "".join(dep_rows),
-        )
-    )
-
-    # 数据文件
-    data_rows = []
-    for path, label in _DATA_FILES:
-        exists = path.exists()
-        size = f"{path.stat().st_size:,} 字节" if exists else "文件不存在"
-        mark = (
-            f'<span class="hz-tag hz-tag--accent">{_STATUS_MARK["ok"]}</span>'
-            if exists
-            else f'<span class="hz-tag">{_STATUS_MARK["todo"]}</span>'
-        )
-        data_rows.append(
-            ui.kv_row(label, f'<code>{ui.esc(path.name)}</code>　{ui.esc(size)}　{mark}')
-        )
-    ui.render(ui.card_html("文化数据", "".join(data_rows)))
-
-    # 模块进度
-    mod_rows = []
-    for dotted, label, phase in _CORE_MODULES:
-        ready = _module_ready(dotted)
-        mark = (
-            f'<span class="hz-tag hz-tag--accent">{_STATUS_MARK["ok"]}</span>'
-            if ready
-            else f'<span class="hz-tag">{phase} 阶段</span>'
-        )
-        mod_rows.append(ui.kv_row(label, f"<code>{ui.esc(dotted)}</code>　{mark}"))
-    ui.render(ui.card_html("模块交付进度", "".join(mod_rows)))
+    st.caption("图片为自由授权作品，署名与许可见图注；完整清单见 assets/images/CREDITS.md。")
 
 
 def _render_backend() -> None:
@@ -221,7 +144,7 @@ def _render_graph_overview() -> None:
     except DataError as exc:
         ui.render_error("知识图谱构建失败", str(exc).splitlines()[0])
         return
-    except Exception as exc:  # 建图失败不应导致整页崩溃
+    except Exception as exc:  # noqa: BLE001 - 建图失败不应导致整页崩溃
         ui.render_error("知识图谱构建失败", f"{type(exc).__name__}：{exc}")
         return
 
@@ -289,6 +212,8 @@ def render() -> None:
         )
     )
 
+    _render_hero_image()
+
     _render_data_overview()
 
     _render_graph_overview()
@@ -298,15 +223,6 @@ def render() -> None:
         _render_backend()
     with cols[1]:
         _render_runtime()
-
-    _render_checklist()
-
-    st.info(
-        "当前进度：**P5 智能体工作流已完成**——「关于项目」页可以现场运行六步工作流"
-        "（问题解析与实体锚定 → 资料检索 → 依据资料作答 → 引用自我核查 → 纠正重试 → 输出归档），"
-        "每一步的输入、输出、耗时与状态都留痕；检索不到资料或后端全部不可用时会立刻中止，"
-        "并把余下步骤记为「跳过」且写明原因。上一阶段的 AI 问答、百科检索、实体详情与知识图谱保持可用。"
-    )
 
     _render_quick_entry()
 

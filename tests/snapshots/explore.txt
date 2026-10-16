@@ -23,16 +23,16 @@
 - button|ex_cat_village|古村落 <n>
 - button|ex_next|下一页 →
 - button|ex_open_chengkan|查看详情 →
-- button|ex_open_guanlu|查看详情 →
-- button|ex_open_hongcun|查看详情 →
+- button|ex_open_chengzhitang|查看详情 →
 - button|ex_open_huipai_architecture|查看详情 →
-- button|ex_open_matouqiang|查看详情 →
+- button|ex_open_huizhou_minju|查看详情 →
 - button|ex_open_nanping|查看详情 →
-- button|ex_open_pingshan|查看详情 →
 - button|ex_open_tangmo|查看详情 →
 - button|ex_open_tangyue|查看详情 →
+- button|ex_open_tunxi_laojie|查看详情 →
 - button|ex_open_xidi|查看详情 →
 - button|ex_open_xucun|查看详情 →
+- button|ex_open_xuguo_shifang|查看详情 →
 - button|ex_open_yuliang|查看详情 →
 - button|ex_prev|← 上一页
 - button|nav_about|关于项目

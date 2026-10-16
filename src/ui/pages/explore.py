@@ -21,7 +21,7 @@ from src.ui.theme import category_color
 PAGE_SIZE = 12
 GRID_COLUMNS = 3
 
-SORT_DEFAULT = "默认顺序"
+SORT_DEFAULT = "默认（有配图优先）"
 SORT_NAME = "按名称"
 SORT_RELATIONS = "按关联关系数"
 SORT_OPTIONS = (SORT_DEFAULT, SORT_NAME, SORT_RELATIONS)
@@ -42,6 +42,11 @@ def _select(
     Returns:
         ``(命中列表, 说明文案)``；命中列表里的 ``score`` 与 ``matched_field``
         在未检索时为空值（不虚构匹配信息）。
+
+    默认顺序下**已有配图的实体排在前面**：图片丰富的条目可读性更好，
+    适合作为浏览入口。排序用 ``list.sort`` 的稳定性 + 0/1 键实现，
+    因此有图实体内部、无图实体内部都保持数据原本的顺序。
+    检索时不做这种重排——相关性必须优先于「有没有图」。
     """
     if query.strip():
         hits = repo.search(query, category=category)
@@ -58,6 +63,9 @@ def _select(
         hits.sort(key=lambda h: h.entity.name)
     elif sort == SORT_RELATIONS:
         hits.sort(key=lambda h: (-repo.degree(h.entity.id), h.entity.name))
+    elif not query.strip():
+        library = datastore.images()
+        hits.sort(key=lambda h: 0 if library.has(h.entity.id) else 1)
 
     return hits, note
 

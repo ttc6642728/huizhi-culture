@@ -14,6 +14,9 @@ from streamlit.testing.v1 import AppTest
 from src import config
 from src.agent import workflow
 from src.data.loader import load_dataset
+from src.data.repository import Repository
+from src.ui import datastore
+from src.ui.pages import explore, home
 
 APP_FILE = Path(__file__).resolve().parent.parent / "app.py"
 
@@ -54,6 +57,53 @@ def test_default_page_renders_navigation(app: AppTest) -> None:
 def _body(app: AppTest) -> str:
     """把一次运行产生的所有 markdown 文本拼起来，便于断言。"""
     return " ".join(m.value for m in app.markdown)
+
+
+# --------------------------------------------------------------------------
+# 首页：徽州主视觉，以及「环境自检」的归属
+# --------------------------------------------------------------------------
+
+
+def test_home_shows_a_credited_hero_image(app: AppTest) -> None:
+    """首页要有徽州代表图片作主视觉，并且图注与作者署名必须一起出现。"""
+    app.run()
+    assert not app.exception, f"首页抛出异常：{app.exception}"
+    assert len(app.image) == 1, "首页应恰好展示一张主视觉图片"
+
+    image = datastore.images().get(home.HERO_IMAGE_ENTITY)
+    assert image is not None, f"图片库缺少 {home.HERO_IMAGE_ENTITY}"
+    body = _body(app)
+    assert image.caption in body, "首页主视觉必须带图注"
+    assert image.artist in body, "首页主视觉必须带作者署名（授权要求）"
+
+
+def test_home_hero_image_entity_is_a_real_credited_image() -> None:
+    """主视觉引用的实体必须真在图片库中、文件存在且有可核查来源。
+
+    配错实体名时首页会**静默**少了主视觉（页面照常、不报错），
+    只有这样的断言才拦得住。
+    """
+    image = datastore.images().get(home.HERO_IMAGE_ENTITY)
+    assert image is not None, f"图片库中没有 {home.HERO_IMAGE_ENTITY}，首页将无主视觉"
+    assert image.exists, f"{home.HERO_IMAGE_ENTITY} 的图片文件缺失：{image.path}"
+    assert image.artist.strip(), "首页主视觉缺作者，按本项目规则不予收录"
+    assert image.source_url.startswith("https://commons.wikimedia.org/"), (
+        f"首页主视觉的来源页面不是 Commons：{image.source_url}"
+    )
+
+
+def test_environment_check_lives_on_about_page_not_home(app: AppTest) -> None:
+    """环境自检属开发者信息：必须出现在「关于项目」页，且不再占用首页。"""
+    app.run()
+    home_body = _body(app)
+    for text in ("环境自检", "模块交付进度", "运行依赖"):
+        assert text not in home_body, f"首页不应再出现「{text}」"
+
+    app.session_state["page"] = "about"
+    app.run()
+    about_body = _body(app)
+    for text in ("环境自检", "模块交付进度", "运行依赖", "文化数据"):
+        assert text in about_body, f"「关于项目」页缺少「{text}」区块"
 
 
 def test_explore_page_lists_real_entities(app: AppTest) -> None:
@@ -168,16 +218,70 @@ def test_detail_relation_direction_is_not_faked(app: AppTest) -> None:
 
 
 def test_explore_button_actually_navigates_to_detail(app: AppTest) -> None:
-    """百科页的「查看详情」按钮必须真的跳转（不允许只有外观的假按钮）。"""
+    """百科页的「查看详情」按钮必须真的跳转（不允许只有外观的假按钮）。
+
+    不假设某个具体实体排在第一页：默认顺序随「有配图优先」规则与图片收录情况变化，
+    因此取当前列表里第一张卡片的按钮，并从按钮 key 反推它应跳到哪个实体。
+    """
     app.run()
     app.session_state["page"] = "explore"
     app.run()
-    app.button(key="ex_open_hongcun").click()
+    button = next(
+        b
+        for b in app.button
+        if str(getattr(b, "key", "") or "").startswith("ex_open_")
+    )
+    entity_id = str(button.key).removeprefix("ex_open_")
+    button.click()
     app.run()
     assert not app.exception, f"点击后抛出异常：{app.exception}"
     assert app.session_state["page"] == "detail"
-    assert app.session_state["entity_id"] == "hongcun"
+    assert app.session_state["entity_id"] == entity_id
     assert "结构化属性" in _body(app)
+
+
+def test_explore_default_order_puts_illustrated_entities_first() -> None:
+    """百科页**默认顺序**必须把已有配图的实体排在前面，且不打乱其余顺序。
+
+    直接调用 ``explore._select`` 验证排序规则本身：比在渲染结果里猜卡片顺序
+    更稳定、更快，也更能说清「为什么是这个顺序」。
+    """
+    repo = Repository(load_dataset())
+    library = datastore.images()
+
+    hits, _ = explore._select(repo, "", None, explore.SORT_DEFAULT)
+    flags = [library.has(h.entity.id) for h in hits]
+
+    illustrated = flags.count(True)
+    assert illustrated > 0, "数据集中至少应有一张配图，否则这条规则无从验证"
+    boundary = flags.index(False) if False in flags else len(flags)
+    assert boundary == illustrated, (
+        f"有图实体应全部排在无图实体之前：有图 {illustrated} 个，"
+        f"但第一个无图实体出现在第 {boundary + 1} 位"
+    )
+
+    # 稳定排序：无图部分保持数据原本的顺序，不被这次重排打乱
+    expected_plain = [e.id for e in repo.entities if not library.has(e.id)]
+    assert [h.entity.id for h in hits[boundary:]] == expected_plain
+
+
+def test_explore_search_and_explicit_sorts_ignore_image_priority() -> None:
+    """「有配图优先」只作用于默认浏览顺序，不得污染检索与显式排序。"""
+    repo = Repository(load_dataset())
+
+    # 检索时必须保持相关性顺序（与 repository.search 完全一致）
+    searched, _ = explore._select(repo, "宏村", None, explore.SORT_DEFAULT)
+    assert [h.entity.id for h in searched] == [
+        h.entity.id for h in repo.search("宏村")
+    ]
+
+    # 显式排序仍然只按各自的键排序
+    by_name, _ = explore._select(repo, "", None, explore.SORT_NAME)
+    assert [h.entity.name for h in by_name] == sorted(e.name for e in repo.entities)
+
+    by_degree, _ = explore._select(repo, "", None, explore.SORT_RELATIONS)
+    keys = [(-repo.degree(h.entity.id), h.entity.name) for h in by_degree]
+    assert keys == sorted(keys)
 
 
 def test_detail_graph_button_sets_real_focus(app: AppTest) -> None:
