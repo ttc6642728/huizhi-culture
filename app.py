@@ -118,7 +118,8 @@ with st.sidebar:
 
     st.markdown("<hr/>", unsafe_allow_html=True)
     st.caption(
-        f"v{__version__}　·　已完成 P0 脚手架 / P1 数据层 / P2 知识图谱 / P3 浏览体验"
+        f"v{__version__}　·　已完成 P0 脚手架 / P1 数据层 / P2 知识图谱 / "
+        "P3 浏览体验 / P4 AI 问答"
     )
 
 

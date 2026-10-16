@@ -660,6 +660,136 @@ input, textarea, [data-baseweb="select"] > div {{
     margin: .9rem 0 .3rem 0;
 }}
 
+/* ===== AI 问答（P4）===== */
+.hz-qbox {{
+    border-left: 3px solid {c['line_strong']};
+    padding: .15rem 0 .15rem .85rem;
+    margin: .3rem 0 1rem 0;
+    font-size: 1.02rem;
+    line-height: 1.7;
+    color: {c['ink']};
+    font-weight: 600;
+}}
+.hz-qbox__label {{
+    display: block;
+    font-size: .68rem;
+    letter-spacing: .16em;
+    color: {c['ink_mute']};
+    font-weight: 400;
+    margin-bottom: .2rem;
+}}
+.hz-answer {{
+    background: {c['surface']};
+    border: 1px solid {c['line']};
+    border-left: 3px solid {c['cinnabar']};
+    border-radius: 10px;
+    padding: 1rem 1.15rem;
+    font-size: .95rem;
+    line-height: 1.9;
+    color: {c['ink_soft']};
+    white-space: normal;
+    word-break: break-word;
+}}
+.hz-answer strong {{ color: {c['ink']}; }}
+.hz-answer__meta {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: .35rem 1rem;
+    font-size: .74rem;
+    color: {c['ink_mute']};
+    margin-bottom: .65rem;
+}}
+.hz-cite {{
+    display: inline-block;
+    min-width: 1.4rem;
+    margin: 0 .14rem;
+    padding: 0 .3rem;
+    border-radius: 4px;
+    background: {c['cinnabar_wash']};
+    color: {c['cinnabar']};
+    font-size: .76rem;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: .05em;
+}}
+.hz-cite--missing {{
+    background: {c['error_wash']};
+    color: {c['error']};
+    text-decoration: line-through;
+}}
+.hz-backend {{
+    display: inline-block;
+    padding: .2rem .65rem;
+    margin: 0 .35rem .35rem 0;
+    border: 1px solid {c['line']};
+    border-radius: 999px;
+    background: {c['surface']};
+    font-size: .76rem;
+    color: {c['ink_mute']};
+}}
+.hz-backend--active {{
+    border-color: {c['cinnabar']};
+    color: {c['cinnabar']};
+    font-weight: 600;
+}}
+.hz-backend--off {{ opacity: .72; }}
+.hz-passage {{
+    padding: .7rem 0;
+    border-bottom: 1px dashed {c['line']};
+}}
+.hz-passage:last-child {{ border-bottom: none; }}
+.hz-passage--unused {{ opacity: .78; }}
+.hz-passage__head {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .45rem;
+    margin-bottom: .3rem;
+}}
+.hz-passage__title {{ color: {c['ink']}; font-weight: 600; font-size: .95rem; }}
+.hz-passage__body {{
+    font-size: .86rem;
+    line-height: 1.78;
+    color: {c['ink_soft']};
+    margin: .3rem 0 0 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}}
+.hz-hit {{
+    display: inline-block;
+    margin: 0 .25rem .25rem 0;
+    padding: 0 .4rem;
+    border-radius: 4px;
+    background: {c['bg_soft']};
+    border: 1px solid {c['line']};
+    font-size: .7rem;
+    color: {c['stone']};
+}}
+.hz-note {{
+    border-left: 3px solid {c['stone_light']};
+    background: {c['bg_soft']};
+    padding: .55rem .8rem;
+    border-radius: 0 6px 6px 0;
+    font-size: .82rem;
+    color: {c['ink_soft']};
+    margin: .5rem 0;
+}}
+.hz-note--warn {{
+    border-left-color: {c['warn']};
+    background: {c['warn_wash']};
+    color: {c['warn']};
+}}
+.hz-note--error {{
+    border-left-color: {c['error']};
+    background: {c['error_wash']};
+    color: {c['error']};
+}}
+.hz-note--ok {{
+    border-left-color: {c['ok']};
+    background: {c['ok_wash']};
+    color: {c['ok']};
+}}
+
 /* 页脚 */
 .hz-footer {{
     margin-top: 3rem;

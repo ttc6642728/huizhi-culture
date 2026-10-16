@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import html as _html
+import re
 from typing import Iterable, Sequence
 
 import streamlit as st
@@ -318,6 +319,105 @@ def group_title(text: str) -> str:
     return f'<div class="hz-group-title">{esc(text)}</div>'
 
 
+# --------------------------------------------------------------------------
+# AI 问答（P4）
+# --------------------------------------------------------------------------
+
+#: 引用编号：与 :mod:`src.qa.prompt` 的解析规则保持一致
+_CITATION_PATTERN = re.compile(r"[\[【]\s*(\d{1,3})\s*[\]】]")
+
+
+def question_box(question: str, label: str = "你问") -> str:
+    """回显用户提问。"""
+    return (
+        '<div class="hz-qbox">'
+        f'<span class="hz-qbox__label">{esc(label)}</span>{esc(question)}'
+        "</div>"
+    )
+
+
+def answer_block(text: str, valid_numbers: Sequence[int] = ()) -> str:
+    """把回答渲染成 HTML，并把 ``[n]`` 变成可读的引用徽标。
+
+    先做 HTML 转义再替换编号，因此模型输出无法注入标签；
+    指向不存在资料的编号会渲染成划掉的错误样式，**不隐藏模型的错误引用**。
+    """
+    allowed = set(int(n) for n in valid_numbers)
+    safe = esc(text)
+
+    def _mark(match: "re.Match[str]") -> str:
+        number = int(match.group(1))
+        if allowed and number not in allowed:
+            return f'<span class="hz-cite hz-cite--missing">{number}</span>'
+        return f'<span class="hz-cite">{number}</span>'
+
+    safe = _CITATION_PATTERN.sub(_mark, safe)
+    body = safe.replace("\n", "<br/>")
+    return f'<div class="hz-answer">{body}</div>'
+
+
+def backend_badge(label: str, active: bool = False, available: bool = True) -> str:
+    """后端状态徽标：当前生效的后端用朱砂高亮，不可用的降透明度。"""
+    cls = "hz-backend"
+    if active:
+        cls += " hz-backend--active"
+    elif not available:
+        cls += " hz-backend--off"
+    return f'<span class="{cls}">{esc(label)}</span>'
+
+
+def hit_chips(terms: Iterable[str]) -> str:
+    """命中词标签（说明这条资料为什么被检索到）。"""
+    items = [t for t in terms if str(t).strip()]
+    if not items:
+        return ""
+    return "".join(f'<span class="hz-hit">{esc(t)}</span>' for t in items)
+
+
+def passage_block(
+    index: int,
+    title: str,
+    category_name: str,
+    category_color: str,
+    text: str,
+    source_titles: Sequence[str] = (),
+    score: float = 0.0,
+    hits: Sequence[str] = (),
+    used: bool = True,
+) -> str:
+    """一条检索到的资料。``used=False`` 表示未被回答引用，会显示为次要状态。"""
+    cls = "hz-passage" if used else "hz-passage hz-passage--unused"
+    meta_bits = [f"相关度 {score:.2f}"]
+    if not used:
+        meta_bits.append("未被回答引用")
+    src = ""
+    if source_titles:
+        src = (
+            '<div class="hz-src__meta" style="margin-top:.3rem;">来源：'
+            + esc("；".join(source_titles))
+            + "</div>"
+        )
+    return (
+        f'<div class="{cls}">'
+        '<div class="hz-passage__head">'
+        f'<span class="hz-cite">{index}</span>'
+        f'<span class="hz-passage__title">{esc(title)}</span>'
+        f"{category_chip(category_name, category_color)}"
+        f'<span class="hz-src__meta" style="display:inline;">{esc("　·　".join(meta_bits))}</span>'
+        "</div>"
+        f'<div>{hit_chips(hits)}</div>'
+        f'<p class="hz-passage__body">{esc(text)}</p>'
+        f"{src}"
+        "</div>"
+    )
+
+
+def note_line(text: str, kind: str = "info") -> str:
+    """提示条。``kind`` 可为 ``info`` / ``ok`` / ``warn`` / ``error``。"""
+    cls = "hz-note" + (f" hz-note--{kind}" if kind != "info" else "")
+    return f'<div class="{cls}">{esc(text)}</div>'
+
+
 __all__ = [
     "esc",
     "hero",
@@ -344,4 +444,10 @@ __all__ = [
     "figure_caption",
     "count_line",
     "group_title",
+    "question_box",
+    "answer_block",
+    "backend_badge",
+    "hit_chips",
+    "passage_block",
+    "note_line",
 ]

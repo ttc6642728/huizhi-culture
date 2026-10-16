@@ -43,8 +43,10 @@ _CORE_MODULES: List[Tuple[str, str, str]] = [
     ("src.data.images", "图片库与署名", "P3"),
     ("src.ui.pages.explore", "文化百科页", "P3"),
     ("src.ui.pages.detail", "实体详情页", "P3"),
-    ("src.qa.retriever", "资料检索", "P4"),
-    ("src.qa.engine", "问答引擎", "P4"),
+    ("src.qa.retriever", "资料检索（BM25）", "P4"),
+    ("src.qa.prompt", "提示词与引用约束", "P4"),
+    ("src.qa.engine", "问答引擎（三层降级）", "P4"),
+    ("src.ui.pages.ask", "AI 问答页", "P4"),
     ("src.agent.workflow", "智能体工作流", "P5"),
 ]
 
@@ -299,10 +301,11 @@ def render() -> None:
     _render_checklist()
 
     st.info(
-        "当前进度：**P3 浏览体验已完成**——文化百科页支持关键词检索与分类筛选，"
-        "实体详情页展示结构化属性、正文、以本实体为主语的关联关系（方向如实标注）、"
-        "可点击的参考资料与图片署名；上一阶段的图谱建模与结构分析保持可用。"
-        "AI 问答（P4）与智能体工作流（P5）尚在开发中，上方「待开发」状态即为真实进度。"
+        "当前进度：**P4 AI 问答已完成**——提问后先在本地文化资料中做 BM25 检索，"
+        "再把资料编号交给后端（Dify → 大模型 → 本地检索式，逐层自动降级）严格依据资料作答，"
+        "回答中的每个事实都标注来源编号；模型若引用了不存在的编号会被标红提示，不会静默忽略。"
+        "上一阶段的百科检索、实体详情与知识图谱保持可用。"
+        "智能体工作流（P5）尚在开发中，下方「待开发」状态即为真实进度。"
     )
 
     _render_quick_entry()
@@ -311,12 +314,14 @@ def render() -> None:
 def _render_quick_entry() -> None:
     """首页快捷入口：跳转到已交付的页面（均为真实跳转）。"""
     ui.render_section("开始探索")
-    cols = st.columns([1, 1, 1, 3], gap="small")
+    cols = st.columns([1, 1, 1, 1, 3], gap="small")
     with cols[0]:
         nav.nav_button("浏览文化百科", "explore", key="home_go_explore", type="primary")
     with cols[1]:
         nav.nav_button("打开知识图谱", "graph", key="home_go_graph")
     with cols[2]:
+        nav.nav_button("向 AI 提问", "ask", key="home_go_ask")
+    with cols[3]:
         try:
             dataset = load_dataset()
         except DataError:
