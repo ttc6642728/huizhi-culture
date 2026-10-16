@@ -137,6 +137,48 @@ def test_dify_query_merges_question_and_passages() -> None:
 
 
 # --------------------------------------------------------------------------
+# 纠正指令（智能体工作流的自我纠正路径）
+# --------------------------------------------------------------------------
+
+
+def test_prompt_without_directive_has_no_extra_section() -> None:
+    """正常提问的提示词不能凭空多出一个区块（保持与 P4 完全一致）。"""
+    text = qa_prompt.build_user_prompt("宏村是什么？", [_passage()])
+    assert "【补充要求】" not in text
+    query = qa_prompt.build_dify_query("宏村是什么？", [_passage()])
+    assert "【补充要求】" not in query
+
+
+def test_user_prompt_appends_directive() -> None:
+    text = qa_prompt.build_user_prompt(
+        "宏村是什么？", [_passage()], qa_prompt.STRICT_RETRY_DIRECTIVE
+    )
+    assert "【补充要求】" in text
+    assert qa_prompt.STRICT_RETRY_DIRECTIVE in text
+
+
+def test_messages_and_dify_query_carry_directive() -> None:
+    messages = qa_prompt.build_messages("宏村是什么？", [_passage()], "请补上编号")
+    assert "请补上编号" in messages[1]["content"]
+    query = qa_prompt.build_dify_query("宏村是什么？", [_passage()], "请补上编号")
+    assert "请补上编号" in query
+
+
+def test_blank_directive_is_ignored() -> None:
+    """空白指令不应产生空区块——否则等于给模型一段无意义的噪声。"""
+    text = qa_prompt.build_user_prompt("宏村是什么？", [_passage()], "   ")
+    assert "【补充要求】" not in text
+
+
+def test_retry_directive_states_the_specific_defect() -> None:
+    """纠正指令要直指缺陷（缺编号 / 编号不存在），而不是笼统的「请重答」。"""
+    directive = qa_prompt.STRICT_RETRY_DIRECTIVE
+    assert "编号" in directive
+    assert "不存在的编号" in directive
+    assert "重新作答" in directive
+
+
+# --------------------------------------------------------------------------
 # 引用解析
 # --------------------------------------------------------------------------
 

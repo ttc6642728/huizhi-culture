@@ -418,6 +418,69 @@ def note_line(text: str, kind: str = "info") -> str:
     return f'<div class="{cls}">{esc(text)}</div>'
 
 
+# --------------------------------------------------------------------------
+# 智能体工作流（P5）
+# --------------------------------------------------------------------------
+
+
+def level_tag(level: str, label: str) -> str:
+    """核查 / 步骤等级标签。``level`` 可为 ``pass`` / ``warn`` / ``fail``。"""
+    cls = "hz-lv" + (f" hz-lv--{level}" if level in {"pass", "warn", "fail"} else "")
+    return f'<span class="{cls}">{esc(label)}</span>'
+
+
+def flow_chain(steps: Sequence[tuple]) -> str:
+    """把工作流步骤画成一条「节点 → 节点」的流程链。
+
+    ``steps`` 中每项为 ``(序号, 步骤名, 职责)``；职责来自代码里的常量，
+    因此这张图不会和实际执行顺序不一致。
+    """
+    nodes = []
+    for index, (number, title, duty) in enumerate(steps):
+        if index:
+            nodes.append('<div class="hz-flow__arrow">→</div>')
+        nodes.append(
+            '<div class="hz-flow__node">'
+            f"<b>STEP {number}</b><strong>{esc(title)}</strong><span>{esc(duty)}</span>"
+            "</div>"
+        )
+    return f'<div class="hz-flow">{"".join(nodes)}</div>'
+
+
+def workflow_step(
+    index: int,
+    title: str,
+    status: str,
+    status_label: str,
+    elapsed_ms: int,
+    input_summary: str,
+    output_summary: str,
+) -> str:
+    """一步的执行记录：序号、标题、状态、耗时与输入输出。
+
+    ``status`` 取 ``ok`` / ``warn`` / ``failed`` / ``skipped``，用左侧色条与标签如实区分；
+    跳过的步骤不会被隐藏，也不会被伪装成「完成」。
+    """
+    return (
+        f'<div class="hz-wfstep hz-wfstep--{esc(status)}">'
+        '<div class="hz-wfstep__head">'
+        f'<span class="hz-wfstep__idx">STEP {index}</span>'
+        f'<span class="hz-wfstep__title">{esc(title)}</span>'
+        f"{level_tag(_STATUS_LEVEL.get(status, ''), status_label)}"
+        f'<span class="hz-wfstep__time">{int(elapsed_ms)} ms</span>'
+        "</div>"
+        '<div class="hz-wfstep__io">'
+        f"<em>输入</em>{esc(input_summary or '—')}<br/>"
+        f"<em>输出</em>{esc(output_summary or '—')}"
+        "</div>"
+        "</div>"
+    )
+
+
+#: 步骤状态 → 标签配色等级
+_STATUS_LEVEL = {"ok": "pass", "warn": "warn", "failed": "fail", "skipped": ""}
+
+
 __all__ = [
     "esc",
     "hero",
@@ -450,4 +513,7 @@ __all__ = [
     "hit_chips",
     "passage_block",
     "note_line",
+    "level_tag",
+    "flow_chain",
+    "workflow_step",
 ]

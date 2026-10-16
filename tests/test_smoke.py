@@ -12,6 +12,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from src import config
+from src.agent import workflow
 from src.data.loader import load_dataset
 
 APP_FILE = Path(__file__).resolve().parent.parent / "app.py"
@@ -48,16 +49,6 @@ def test_default_page_renders_navigation(app: AppTest) -> None:
     labels = [b.label for b in app.sidebar.button]
     for expected in ["文化探索", "文化百科", "知识图谱", "AI 问答", "关于项目"]:
         assert expected in labels, f"侧边栏缺少导航项：{expected}"
-
-
-def test_pending_page_explains_its_phase(app: AppTest) -> None:
-    """未实现页面必须如实说明所处阶段，而不是显示空壳内容。"""
-    app.run()
-    app.session_state["page"] = "about"
-    app.run()
-    assert not app.exception, f"about 页抛出异常：{app.exception}"
-    body = " ".join(m.value for m in app.markdown)
-    assert "P5" in body, "about 页未标注交付阶段 P5"
 
 
 def _body(app: AppTest) -> str:
@@ -203,15 +194,86 @@ def test_detail_graph_button_sets_real_focus(app: AppTest) -> None:
     assert app.session_state.get("graph_focus", "") == "", "聚焦请求应只被消费一次"
 
 
-def test_pending_pages_state_their_phase(app: AppTest) -> None:
-    """仍未实现的页面必须说明所处阶段，不得出现只有外观的空壳。"""
-    app.run()
-    app.session_state["page"] = "about"
-    app.run()
-    assert not app.exception, f"about 页抛出异常：{app.exception}"
-    body = _body(app)
-    assert "P5" in body, "about 页未标注交付阶段 P5"
-    assert "尚未实现" in body or "计划在" in body, "about 页未说明尚未实现"
+def test_about_workflow_timeline_shows_every_step(local_app: AppTest) -> None:
+    """运行工作流后必须逐步展示输入、输出与耗时（不得只给一个结论）。"""
+    _open_about(local_app)
+    local_app.text_area(key="wf_input").set_value("宏村是什么？")
+    local_app.button(key="wf_run").click()
+    local_app.run()
+    assert not local_app.exception, f"运行工作流抛出异常：{local_app.exception}"
+
+    result = local_app.session_state.get("wf_result")
+    assert result is not None, "运行后应把工作流结果写入会话"
+    assert len(result.steps) == len(workflow.STEP_ORDER)
+
+    body = _body(local_app)
+    for i, step in enumerate(result.steps, start=1):
+        assert f"STEP {i}" in body, f"时间线缺少第 {i} 步"
+        assert step.title in body
+        assert step.status_label in body
+    assert "步骤执行日志" in body
+    assert "引用核查结论" in body
+    assert "最终回答" in body
+    assert "ms" in body, "每步耗时必须如实显示"
+
+
+def test_about_workflow_records_input_and_output_per_step(local_app: AppTest) -> None:
+    """每一步都要有输入与输出说明——「可追踪」的具体含义。"""
+    _open_about(local_app)
+    local_app.text_area(key="wf_input").set_value("徽商是什么？")
+    local_app.button(key="wf_run").click()
+    local_app.run()
+    result = local_app.session_state.get("wf_result")
+    for step in result.steps:
+        assert step.output_summary
+        assert step.elapsed_ms >= 0
+    stored = workflow.StepRecord  # 便于阅读：断言的是真实的数据结构
+    assert all(isinstance(s, stored) for s in result.steps)
+    assert result.trace_text().count("输入：") == len(result.steps)
+
+
+def test_about_workflow_aborts_honestly_on_unknown_topic(local_app: AppTest) -> None:
+    """资料库里没有的主题必须中途中止并说明在哪一步停下，而不是硬凑答案。"""
+    _open_about(local_app)
+    local_app.text_area(key="wf_input").set_value("量子纠缠与超导体")
+    local_app.button(key="wf_run").click()
+    local_app.run()
+    assert not local_app.exception
+    result = local_app.session_state.get("wf_result")
+    assert result.status == "aborted"
+    assert result.aborted_at == workflow.STEP_RETRIEVE
+    assert result.step(workflow.STEP_ANSWER).status == "skipped"
+    body = _body(local_app)
+    assert "工作流已中止" in body
+    assert "第 2 步中止" in body, "中止信息要指明发生在哪一步"
+
+
+def test_about_workflow_example_button_actually_runs(local_app: AppTest) -> None:
+    """示例问题按钮必须真的运行工作流（不允许只有外观的假按钮）。"""
+    _open_about(local_app)
+    assert not local_app.session_state.get("wf_result")
+    local_app.button(key="wf_ex_0").click()
+    local_app.run()
+    assert not local_app.exception
+    result = local_app.session_state.get("wf_result")
+    assert result is not None, "点击示例后应产生一次真实运行"
+    assert result.question
+    assert result.steps
+
+
+def test_about_workflow_clear_button_resets(local_app: AppTest) -> None:
+    """清空按钮必须真的清掉运行结果与输入。"""
+    _open_about(local_app)
+    local_app.text_area(key="wf_input").set_value("宏村是什么？")
+    local_app.button(key="wf_run").click()
+    local_app.run()
+    assert local_app.session_state.get("wf_result") is not None
+
+    local_app.button(key="wf_clear").click()
+    local_app.run()
+    assert not local_app.exception
+    assert local_app.session_state.get("wf_result") is None
+    assert not local_app.session_state.get("wf_input")
 
 
 def test_graph_page_renders_real_content(app: AppTest) -> None:
@@ -368,3 +430,32 @@ def test_ask_has_no_degradation_when_local_forced(local_app: AppTest) -> None:
     assert result.degradations == (), f"本地后端不应产生降级说明：{result.degradations}"
     assert result.used_local_fallback is True
     assert "本地检索式后端" in _body(local_app)
+
+
+# --------------------------------------------------------------------------
+# 关于项目页与智能体工作流（P5）—— 工作流同样走本地检索式后端，不联网
+# --------------------------------------------------------------------------
+
+
+def _open_about(app: AppTest) -> AppTest:
+    app.run()
+    app.session_state["page"] = "about"
+    app.run()
+    assert not app.exception, f"关于项目页抛出异常：{app.exception}"
+    return app
+
+
+def test_about_page_renders_real_content(app: AppTest) -> None:
+    """「关于项目」页必须渲染真实内容与可运行的工作流，而不是「未实现」占位。"""
+    _open_about(app)
+    body = _body(app)
+    assert "关于项目" in body
+    assert "尚未实现" not in body, "已交付的页面不应再显示占位文案"
+    # 工作流的六个步骤必须如实展示（步骤名来自代码常量，而不是页面里手写的文案）
+    for key in workflow.STEP_ORDER:
+        assert workflow.STEP_TITLES[key] in body, f"流程说明缺少步骤：{key}"
+    # 模块职责表与开发原则都要有，且数据规模来自真实数据集
+    assert "架构与模块职责" in body
+    assert "开发原则" in body
+    dataset = load_dataset()
+    assert f"{len(dataset.entities)} 个实体" in body

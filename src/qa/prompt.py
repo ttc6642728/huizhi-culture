@@ -32,6 +32,14 @@ SYSTEM_PROMPT = """你是「徽知」，一个只依据给定资料回答徽州�
 #: 用户提示词里单条资料正文的字符上限（与检索层的文档长度配合，控制总长度）
 MAX_PASSAGE_CHARS = 900
 
+#: 「纠正重试」指令。智能体工作流在自我核查不通过时用它再问一次——
+#: 措辞直指具体缺陷（缺编号 / 编号不存在），而不是笼统地说「请重新回答」。
+STRICT_RETRY_DIRECTIVE = (
+    "上一次回答没有通过引用核查：或缺少来源编号，或引用了不存在的编号。"
+    "请重新作答，逐条对照【资料】为每个事实性陈述标注真实存在的编号（如 [1]、[2]）；"
+    "资料没有写明的内容一律不要写，也不要为了显得完整而补全细节。"
+)
+
 #: 引用编号解析：同时接受半角 ``[1]`` 与全角 ``【1】``
 _CITATION_RE = re.compile(r"[\[【]\s*(\d{1,3})\s*[\]】]")
 
@@ -63,8 +71,12 @@ def format_passages(passages: Sequence[Passage]) -> str:
     return "\n\n".join(format_passage(i, p) for i, p in enumerate(passages, start=1))
 
 
-def build_user_prompt(question: str, passages: Sequence[Passage]) -> str:
-    """拼出用户侧提示词：资料在前、问题在后、最后再强调一次引用要求。"""
+def build_user_prompt(question: str, passages: Sequence[Passage], directive: str = "") -> str:
+    """拼出用户侧提示词：资料在前、问题在后、最后再强调一次引用要求。
+
+    ``directive`` 是附加要求（例如智能体工作流自我核查不通过后的纠正指令），
+    为空时不产生任何额外内容——正常提问的提示词与以前完全一致。
+    """
     parts = [
         "【资料】",
         format_passages(passages),
@@ -74,24 +86,33 @@ def build_user_prompt(question: str, passages: Sequence[Passage]) -> str:
         "",
         "请依据上述资料作答，在每个事实性陈述后标注来源编号。",
     ]
+    if directive.strip():
+        parts += ["", "【补充要求】", directive.strip()]
     return "\n".join(parts)
 
 
-def build_messages(question: str, passages: Sequence[Passage]) -> List[Dict[str, str]]:
+def build_messages(
+    question: str,
+    passages: Sequence[Passage],
+    directive: str = "",
+) -> List[Dict[str, str]]:
     """构造 OpenAI 兼容的 ``messages`` 数组。"""
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": build_user_prompt(question, passages)},
+        {"role": "user", "content": build_user_prompt(question, passages, directive)},
     ]
 
 
-def build_dify_query(question: str, passages: Sequence[Passage]) -> str:
+def build_dify_query(question: str, passages: Sequence[Passage], directive: str = "") -> str:
     """构造 Dify 的 ``query`` 字段。
 
     Dify 的知识库/工作流有自己的提示词配置，这里只把「问题 + 资料」原样传过去，
     不使用 OpenAI 的 system/user 结构，避免与应用内的提示词重复叠加。
     """
-    return f"{question.strip()}\n\n【本次检索到的资料】\n{format_passages(passages)}"
+    text = f"{question.strip()}\n\n【本次检索到的资料】\n{format_passages(passages)}"
+    if directive.strip():
+        text += f"\n\n【补充要求】\n{directive.strip()}"
+    return text
 
 
 def citation_numbers(answer: str) -> List[int]:
@@ -148,6 +169,7 @@ def validate_question(question: str) -> str:
 
 __all__ = [
     "SYSTEM_PROMPT",
+    "STRICT_RETRY_DIRECTIVE",
     "MAX_PASSAGE_CHARS",
     "MAX_QUESTION_CHARS",
     "format_passage",

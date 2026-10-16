@@ -790,6 +790,92 @@ input, textarea, [data-baseweb="select"] > div {{
     color: {c['ok']};
 }}
 
+/* ===== 智能体工作流：流程说明 ===== */
+.hz-flow {{
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: .3rem;
+    margin: .2rem 0 .6rem 0;
+}}
+.hz-flow__node {{
+    flex: 1 1 150px;
+    min-width: 150px;
+    background: {c['surface']};
+    border: 1px solid {c['line']};
+    border-radius: {RADIUS['md']};
+    padding: .5rem .6rem;
+    font-size: .8rem;
+    color: {c['ink_soft']};
+}}
+.hz-flow__node b {{
+    display: block;
+    font-family: {f['mono']};
+    font-size: .7rem;
+    color: {c['cinnabar']};
+    letter-spacing: .08em;
+}}
+.hz-flow__node strong {{ display: block; color: {c['ink']}; font-size: .86rem; font-weight: 600; }}
+.hz-flow__node span {{ display: block; color: {c['ink_mute']}; font-size: .74rem; line-height: 1.5; margin-top: .15rem; }}
+.hz-flow__arrow {{
+    align-self: center;
+    color: {c['line_strong']};
+    font-size: .8rem;
+    flex: none;
+}}
+
+/* ===== 智能体工作流：步骤时间线 ===== */
+.hz-wfstep {{
+    background: {c['surface']};
+    border: 1px solid {c['line']};
+    border-left: 3px solid {c['line_strong']};
+    border-radius: 0 {RADIUS['md']} {RADIUS['md']} 0;
+    padding: .55rem .8rem .6rem .8rem;
+    margin-bottom: .4rem;
+}}
+.hz-wfstep--ok {{ border-left-color: {c['ok']}; }}
+.hz-wfstep--warn {{ border-left-color: {c['warn']}; }}
+.hz-wfstep--failed {{ border-left-color: {c['error']}; }}
+.hz-wfstep--skipped {{ border-left-color: {c['stone_light']}; background: {c['bg_soft']}; }}
+.hz-wfstep__head {{
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    flex-wrap: wrap;
+}}
+.hz-wfstep__idx {{
+    font-family: {f['mono']};
+    font-size: .74rem;
+    color: {c['ink_mute']};
+    flex: none;
+}}
+.hz-wfstep__title {{ font-size: .9rem; color: {c['ink']}; font-weight: 600; }}
+.hz-wfstep__time {{ font-size: .72rem; color: {c['ink_mute']}; font-family: {f['mono']}; }}
+.hz-wfstep__io {{ font-size: .8rem; color: {c['ink_soft']}; margin-top: .2rem; line-height: 1.65; }}
+.hz-wfstep__io em {{
+    font-style: normal;
+    color: {c['ink_mute']};
+    font-size: .72rem;
+    letter-spacing: .06em;
+    margin-right: .3rem;
+}}
+.hz-wfstep--skipped .hz-wfstep__title {{ color: {c['ink_mute']}; font-weight: 500; }}
+
+/* ===== 核查结论标签 ===== */
+.hz-lv {{
+    display: inline-block;
+    font-size: .72rem;
+    padding: 0 .38rem;
+    border-radius: 4px;
+    border: 1px solid {c['line']};
+    background: {c['bg_soft']};
+    color: {c['stone']};
+    white-space: nowrap;
+}}
+.hz-lv--pass {{ border-color: {c['ok']}; background: {c['ok_wash']}; color: {c['ok']}; }}
+.hz-lv--warn {{ border-color: {c['warn']}; background: {c['warn_wash']}; color: {c['warn']}; }}
+.hz-lv--fail {{ border-color: {c['error']}; background: {c['error_wash']}; color: {c['error']}; }}
+
 /* 页脚 */
 .hz-footer {{
     margin-top: 3rem;

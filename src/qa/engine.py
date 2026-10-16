@@ -90,8 +90,20 @@ class Backend(Protocol):
     def available(self) -> Tuple[bool, str]:
         """返回 ``(是否可用, 不可用原因)``。不发起网络请求，只做配置检查。"""
 
-    def answer(self, question: str, passages: Sequence[Passage]) -> BackendAnswer:
-        """基于给定资料回答问题。失败时抛 :class:`~src.qa.errors.BackendError`。"""
+    def answer(
+        self,
+        question: str,
+        passages: Sequence[Passage],
+        *,
+        directive: str = "",
+    ) -> BackendAnswer:
+        """基于给定资料回答问题。失败时抛 :class:`~src.qa.errors.BackendError`。
+
+        ``directive`` 是可选的补充要求（目前只有智能体工作流的纠正重试会用到）：
+        引擎在 ``directive`` 为空时只用两个位置参数调用本方法，
+        因此旧式实现即使不接受该参数也照常工作；不支持它的后端在纠正重试时会失败，
+        该失败会被如实记入降级说明，而不是被静默吞掉。
+        """
 
 
 class DifyBackend:
@@ -127,10 +139,16 @@ class DifyBackend:
             return False, f"DIFY_APP_TYPE「{self._cfg.app_type}」不受支持"
         return True, ""
 
-    def answer(self, question: str, passages: Sequence[Passage]) -> BackendAnswer:
+    def answer(
+        self,
+        question: str,
+        passages: Sequence[Passage],
+        *,
+        directive: str = "",
+    ) -> BackendAnswer:
         endpoint = self._ENDPOINTS[self._cfg.app_type]
         url = f"{self._cfg.base_url}/{endpoint}"
-        text = qa_prompt.build_dify_query(question, passages)
+        text = qa_prompt.build_dify_query(question, passages, directive)
 
         if self._cfg.app_type == "workflow":
             payload: Dict = {
@@ -206,11 +224,17 @@ class OpenAICompatBackend:
             return False, "未配置 LLM_MODEL"
         return True, ""
 
-    def answer(self, question: str, passages: Sequence[Passage]) -> BackendAnswer:
+    def answer(
+        self,
+        question: str,
+        passages: Sequence[Passage],
+        *,
+        directive: str = "",
+    ) -> BackendAnswer:
         url = f"{self._cfg.base_url}/chat/completions"
         payload = {
             "model": self._cfg.model,
-            "messages": qa_prompt.build_messages(question, passages),
+            "messages": qa_prompt.build_messages(question, passages, directive),
             # 温度调低：本项目要的是「照着资料说」，不是创作
             "temperature": self._temperature,
             "max_tokens": self._max_tokens,
@@ -268,7 +292,15 @@ class LocalRetrievalBackend:
     def available(self) -> Tuple[bool, str]:
         return True, ""
 
-    def answer(self, question: str, passages: Sequence[Passage]) -> BackendAnswer:
+    def answer(
+        self,
+        question: str,
+        passages: Sequence[Passage],
+        *,
+        directive: str = "",
+    ) -> BackendAnswer:
+        # 本后端不做生成，纠正指令无从生效——它本来就逐条标注编号，
+        # 因此这里接受参数是为了满足后端协议，而不是假装执行了纠正。
         if not passages:
             return BackendAnswer(
                 text=(
@@ -469,7 +501,7 @@ class QAEngine:
         return self._retriever.retrieve(question)
 
     def ask(self, question: str) -> QAResult:
-        """回答问题。
+        """回答问题（检索 + 作答）。
 
         Raises:
             QuestionError: 问题不合法。
@@ -477,17 +509,50 @@ class QAEngine:
         """
         text = qa_prompt.validate_question(question)
         started = self._clock()
-
         passages = tuple(self._retriever.retrieve(text, top_k=self._top_k))
+        return self.answer_from(text, passages, started=started)
+
+    def answer_from(
+        self,
+        question: str,
+        passages: Sequence[Passage],
+        *,
+        directive: str = "",
+        backends: Optional[Sequence[Backend]] = None,
+        started: Optional[float] = None,
+    ) -> QAResult:
+        """在**已经检索好的资料**上运行后端降级链。
+
+        ``ask()`` 就是「检索 + 本方法」的组合；把两步拆开是为了让智能体工作流
+        能把「检索」与「作答」当成两个可分别追踪的步骤（见 :mod:`src.agent.workflow`）。
+
+        Args:
+            question: 已经通过校验的问题文本。
+            passages: 本次要交给后端的资料（编号即答案里的引用编号）。
+            directive: 附加给后端的补充要求，空字符串表示无额外要求。
+            backends: 覆盖引擎自带的降级链（工作流做纠正重试时可能只想用其中一个后端）。
+            started: 起始计时点；不传则以当前时刻为起点。
+
+        Raises:
+            AllBackendsFailedError: 降级链上的后端全部失败。
+        """
+        started = self._clock() if started is None else started
+        chain: Sequence[Backend] = self._backends if backends is None else list(backends)
+        passages = tuple(passages)
 
         degradations: List[str] = []
-        for backend in self._backends:
+        for backend in chain:
             ok, reason = self._probe(backend)
             if not ok:
                 degradations.append(f"{backend.label}：{reason}")
                 continue
             try:
-                backend_answer = backend.answer(text, passages)
+                # 无补充要求时只用两个位置参数调用，保证旧式后端实现（不接受
+                # directive）在常规问答路径上不受影响。
+                if directive:
+                    backend_answer = backend.answer(question, passages, directive=directive)
+                else:
+                    backend_answer = backend.answer(question, passages)
             except Exception as exc:  # noqa: BLE001 - 任何一个后端的失败都不应终止流程
                 degradations.append(f"{backend.label}：{describe_exception(exc)}")
                 continue
@@ -499,7 +564,7 @@ class QAEngine:
 
             elapsed_ms = int((self._clock() - started) * 1000)
             return self._build_result(
-                question=text,
+                question=question,
                 answer=answer_text,
                 backend=backend,
                 model=backend_answer.model,

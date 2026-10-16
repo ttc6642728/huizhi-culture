@@ -48,6 +48,7 @@ _CORE_MODULES: List[Tuple[str, str, str]] = [
     ("src.qa.engine", "问答引擎（三层降级）", "P4"),
     ("src.ui.pages.ask", "AI 问答页", "P4"),
     ("src.agent.workflow", "智能体工作流", "P5"),
+    ("src.ui.pages.about", "关于项目页", "P5"),
 ]
 
 #: 数据文件 -> 说明
@@ -301,11 +302,10 @@ def render() -> None:
     _render_checklist()
 
     st.info(
-        "当前进度：**P4 AI 问答已完成**——提问后先在本地文化资料中做 BM25 检索，"
-        "再把资料编号交给后端（Dify → 大模型 → 本地检索式，逐层自动降级）严格依据资料作答，"
-        "回答中的每个事实都标注来源编号；模型若引用了不存在的编号会被标红提示，不会静默忽略。"
-        "上一阶段的百科检索、实体详情与知识图谱保持可用。"
-        "智能体工作流（P5）尚在开发中，下方「待开发」状态即为真实进度。"
+        "当前进度：**P5 智能体工作流已完成**——「关于项目」页可以现场运行六步工作流"
+        "（问题解析与实体锚定 → 资料检索 → 依据资料作答 → 引用自我核查 → 纠正重试 → 输出归档），"
+        "每一步的输入、输出、耗时与状态都留痕；检索不到资料或后端全部不可用时会立刻中止，"
+        "并把余下步骤记为「跳过」且写明原因。上一阶段的 AI 问答、百科检索、实体详情与知识图谱保持可用。"
     )
 
     _render_quick_entry()
@@ -314,7 +314,7 @@ def render() -> None:
 def _render_quick_entry() -> None:
     """首页快捷入口：跳转到已交付的页面（均为真实跳转）。"""
     ui.render_section("开始探索")
-    cols = st.columns([1, 1, 1, 1, 3], gap="small")
+    cols = st.columns([1, 1, 1, 1, 1, 3], gap="small")
     with cols[0]:
         nav.nav_button("浏览文化百科", "explore", key="home_go_explore", type="primary")
     with cols[1]:
@@ -322,6 +322,8 @@ def _render_quick_entry() -> None:
     with cols[2]:
         nav.nav_button("向 AI 提问", "ask", key="home_go_ask")
     with cols[3]:
+        nav.nav_button("运行智能体工作流", "about", key="home_go_agent")
+    with cols[4]:
         try:
             dataset = load_dataset()
         except DataError:

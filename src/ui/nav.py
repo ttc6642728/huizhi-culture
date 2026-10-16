@@ -15,12 +15,13 @@ from typing import Dict, List, Optional, Tuple
 import streamlit as st
 
 #: 侧边栏导航项。``key`` 同时是 ``src.ui.pages.<key>`` 的模块名。
+#: ``phase`` 只在模块尚未实现时用于如实标注交付阶段（为空即表示已交付）。
 NAV_ITEMS: List[Dict[str, str]] = [
     {"key": "home", "label": "文化探索", "phase": ""},
     {"key": "explore", "label": "文化百科", "phase": "P3"},
     {"key": "graph", "label": "知识图谱", "phase": "P2"},
     {"key": "ask", "label": "AI 问答", "phase": "P4"},
-    {"key": "about", "label": "关于项目", "phase": "P5"},
+    {"key": "about", "label": "关于项目", "phase": ""},
 ]
 
 #: 不在侧边栏出现、但可被跳转到的页面 → 该页应高亮哪个导航项。
