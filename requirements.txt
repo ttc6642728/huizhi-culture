@@ -1,0 +1,17 @@
+# 徽知 · Huizhou Culture Explorer 运行依赖
+#
+# 安装（国内推荐镜像）：
+#   pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+#
+# 注：清华镜像（pypi.tuna.tsinghua.edu.cn）在本项目开发环境中对 pip 返回 403，
+#     同一地址用浏览器 / curl 访问正常，故默认推荐阿里云镜像。
+
+streamlit==1.66.0
+networkx==3.7
+pyvis==0.3.2
+jieba==0.42.1
+requests==2.34.2
+python-dotenv==1.2.4
+
+# 测试
+pytest==9.1.1

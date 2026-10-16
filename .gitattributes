@@ -1,0 +1,20 @@
+# 统一换行符，避免跨平台协作时产生无意义的整文件 diff
+* text=auto eol=lf
+
+# 二进制文件不做换行符转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.pptx binary
+*.xlsx binary
+
+# Git 语言统计时把 HTML/CSS 片段识别出来
+*.md text
+*.json text
+*.py text
