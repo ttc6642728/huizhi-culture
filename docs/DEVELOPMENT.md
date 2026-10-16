@@ -53,10 +53,10 @@
 
 **决策**：`src/graph/builder.py::build_graph` 使用 `nx.MultiDiGraph`。
 
-**理由**：`nx.DiGraph` 会把同向平行边**静默合并**，关系数从 150 变成 149——
+**理由**：`nx.DiGraph` 会把同向平行边**静默合并**，导致关系数凭空少 1——
 图谱与源数据不一致，属于数据失真。`tests/test_graph.py` 中不仅有
 `test_graph_is_multidigraph`，还有 `test_parallel_edges_are_preserved`，
-并直接从渲染产物里把 JS 数据载荷解析出来核对边数必须等于 150。
+并直接从渲染产物里把 JS 数据载荷解析出来核对边数与数据完全一致（当前 180 条）。
 
 **代价与处理**：多重图的连通性、最短路、聚类等算法在无向简单视图
 （`analysis.to_undirected_simple`，折叠平行边）上计算；路径展示时若某段只有反向关系，
@@ -117,6 +117,56 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 - 无法核实的条目**不写入**数据集。
 - 图片仅使用自由授权（如 Wikimedia Commons 的 CC 协议）素材，并在 `assets/images/CREDITS.md` 中署名。
 
+### 2.8 导航模型抽离为单一来源（P3）
+
+**背景**：原本导航项与路由判定散落在 `app.py` 里。P3 引入**实体详情页**——它需要能被百科列表
+点击跳转进入，但**不应出现在侧边栏**（否则用户会看到一个没有上下文的空详情页入口）。
+
+**决策**：抽出 `src/ui/nav.py` 作为导航的唯一来源：
+
+- `NAV_ITEMS`：侧边栏可见的入口（含未实现页面的阶段标注）。
+- `HIDDEN_PAGES = {"detail": "explore"}`：映射「隐藏页 → 其归属的可见入口」，用于侧边栏高亮。
+- 路由一律通过 `nav.resolve_route()`，侧边栏高亮通过 `nav.highlight_of()`。
+- 页面间跳转用 `nav.goto(page, **params)`——**刻意不把跳转状态写进 URL query params**。
+
+**为什么不写 query params**：Streamlit 的 `st.query_params` 是持久的。若详情页把
+`?page=detail&entity=hongcun` 写进地址栏，用户点侧边栏「首页」后 URL 会残留旧参数，
+刷新或前进后退时会被**拽回上一页**。因此跳转状态只存 `st.session_state`，用后即清
+（`st.session_state.pop("graph_focus")` 这类一次性消费）。
+
+**约束固化**：`tests/test_nav.py` 断言「每个 `NAV_ITEMS` 条目要么有对应模块文件，要么显式标注了
+`phase`」，杜绝出现既无实现、又无阶段说明、点进去一片空白的假入口。
+
+### 2.9 分类专色上移到设计系统（P3）
+
+**背景**：11 个分类的专属配色原本定义在 `src/graph/visualize.py`（图谱专用）。P3 的百科卡片与
+详情页也要按分类着色——但如果从界面层去 import `visualize`，就会把 PyVis 这个重依赖拖进样式层。
+
+**决策**：把 `CATEGORY_COLORS` 上移到 `src/ui/theme.py`（与 `COLORS` 同处），
+`visualize.py` 改为**反向** `from src.ui.theme import CATEGORY_COLORS`。
+
+**收益**：同一个实体在图谱节点、百科卡片、详情页色条上**颜色完全一致**，
+且配色定义只有一处。`tests/test_graph.py` 保留断言「11 个分类各有专属配色，不落到兜底色」。
+
+### 2.10 图片不可用时的优雅降级（P3）
+
+**背景**：P3 计划从 Wikimedia Commons 下载 CC 授权真实徽州图。实测本机对
+`commons.wikimedia.org` 的 TCP 连接被阻断（DNS 正常解析到 `103.102.166.224`，但直连 / 走代理 /
+脱离沙箱三种方式均超时 `code=000`；同环境的 `ihchina.cn`、`mirrors.aliyun.com` 均正常 `200`；
+Openverse API 同样不可达）。**这是网络阻断，不是代码问题**。
+
+**决策**：不伪造图片、不降级用无关图凑数，而是把「无图」做成一种**一等公民的正常状态**：
+
+1. `scripts/fetch_images.py` 完整实现（检索词 + 必须匹配 / 排除正则 + 许可白名单 +
+   分辨率与画幅过滤 + 同图去重 + 联网通道自动探测），可在任何能访问 Commons 的网络环境一键复现；
+2. `src/data/images.py` 的 `ImageLibrary` 在**清单缺失 / JSON 损坏 / 图片文件丢失**三种情况下
+   全部安全降级为空结果，绝不抛错中断页面；
+3. 界面在无图时显示纯排版降级形态（不显示破图占位）；
+4. `assets/images/README.md` 记录实测证据、复现命令与署名要求。
+
+**授权白名单**：仅接受 CC0 / CC BY / CC BY-SA / Public domain / GFDL，**主动拒绝 NC（非商用）
+与 ND（禁演绎）**，避免授权瑕疵。所有图片的 `credit` 在作者字段缺失时返回「作者见来源页面」而非空串。
+
 ---
 
 ## 三、模块职责
@@ -125,11 +175,14 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 |---|---|
 | `app.py` | 页面配置、注入设计系统、侧边栏导航、页面路由、页脚 |
 | `src/config.py` | 路径常量、`.env` 加载、问答后端探测与降级判断 |
-| `src/ui/theme.py` | 设计令牌（配色 / 字体 / 圆角 / 间距）与全局 CSS 注入 |
-| `src/ui/components.py` | 卡片、标签、区块标题、空状态、错误状态、引用条目等 HTML 组件 |
+| `src/ui/theme.py` | 设计令牌（配色 / 字体 / 圆角 / 间距）、11 分类专色与全局 CSS 注入 |
+| `src/ui/components.py` | 卡片、面包屑、分类标签、关系行、来源行、图片图注、区块标题、空/错状态等 HTML 组件 |
+| `src/ui/nav.py` | 导航模型唯一来源：可见入口、隐藏页归属、路由解析、高亮判定、跳转 |
+| `src/ui/datastore.py` | 界面共享数据入口，缓存 `repository()` 与 `images()` |
 | `src/ui/pages/*.py` | 各页面渲染入口，统一导出 `render()` |
 | `src/data/loader.py` | 读取并校验实体 / 关系 / 来源 JSON，给出可读的错误信息 |
 | `src/data/repository.py` | 搜索、分类筛选、详情查询、邻居查询、子图与路径 |
+| `src/data/images.py` | 实体图片库与署名；清单/文件缺失时安全降级 |
 | `src/graph/builder.py` | 构建 `MultiDiGraph`（实体为节点、关系为边，保留同向平行边）；分类/关系类型筛选、ego 子图 |
 | `src/graph/analysis.py` | 结构统计、度数/介数中心性排名、连通分量、最短关联路径、模块度聚类 |
 | `src/graph/visualize.py` | 生成离线自洽的交互式 HTML（内联资源、资源清洗、图例、路径链条） |
@@ -138,6 +191,7 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 | `src/qa/prompt.py` | 构造带编号引用的提示词，约束模型只依据资料作答 |
 | `src/qa/engine.py` | 三层后端实现与自动降级、异常与超时处理 |
 | `src/agent/workflow.py` | 多步工作流编排与步骤日志 |
+| `scripts/fetch_images.py` | 从 Wikimedia Commons 抓取 CC 授权图片（许可白名单 + 检索/排除正则过滤） |
 
 ---
 
@@ -390,3 +444,110 @@ app.py（修改）                侧边栏版本说明更新为已完成阶段
 
 实现文化百科列表页（关键词搜索 + 分类筛选）、实体详情页（结构化属性、真实关联关系、
 可点击来源）、首页文化探索区，并下载自由授权的徽州建筑图片来源，配套 `assets/images/CREDITS.md`。
+
+### P3 浏览体验（已完成）
+
+**新增文件**
+
+```
+data/entities.json        扩充至 96 个实体（新增「一府六县」6 个县份）
+data/relations.json       扩充至 180 条关系 / 11 种关系类型（新增 declared_in 申报地区）
+data/sources.json         扩充至 33 条来源
+src/data/images.py        实体图片库与署名，缺失时安全降级
+src/ui/nav.py             导航模型唯一来源（可见入口 / 隐藏页 / 路由 / 高亮 / 跳转）
+src/ui/datastore.py       界面共享数据入口（缓存 repository 与 images）
+src/ui/pages/explore.py   文化百科页（加权检索 + 分类快捷筛选 + 排序 + 分页 + 空状态）
+src/ui/pages/detail.py    实体详情页（属性表 + 方向分组的关联关系 + 可点击来源 + 图片 + 跳图谱）
+scripts/fetch_images.py   Commons 图片抓取脚本（许可白名单 + 检索/排除正则 + 通道探测）
+assets/images/README.md   图片不可用时的说明、复现命令与署名要求
+tests/test_nav.py              导航模型测试（16 项）
+tests/test_image_library.py    图片库降级测试（8 项）
+tests/test_components.py       组件渲染测试（12 项）
+src/ui/theme.py（修改）         新增 11 分类专色、面包屑/卡片/详情/关系/来源/图注样式
+src/ui/components.py（修改）    新增 crumb / category_chip / entity_card / detail_head /
+                               relation_row / source_row / figure_caption / count_line / group_title
+src/graph/visualize.py（修改）  分类专色改为复用 theme（消除重复定义）
+src/ui/pages/home.py（修改）    P3 模块进度 + 快捷入口
+src/ui/pages/graph.py（修改）   selectbox 加稳定 key；支持从详情页跳转时预置聚焦
+app.py（修改）                  路由改用 nav.resolve_route / highlight_of
+```
+
+**数据扩充（用户确认后执行）**
+
+用户指出「徽州」的 41 条关系全部为入边、无出边，「可以补充几条出向关系」。
+核查后确认这是**真实的建模缺口**——徽州作为一个地域概念，本应「包含」其下辖县份，
+但数据里没有任何实体承载这一层级。因此不是硬加边凑数，而是补齐缺失的概念层：
+
+| 改动 | 内容 | 结果 |
+|---|---|---|
+| 新增 6 个县份实体 | 歙县 / 休宁 / 黟县 / 祁门 / 绩溪 / 婺源（归类「山川地域」） | 实体 90 → **96** |
+| 新增 `composed_of`（包含组成） | `徽州 → 六县` 共 6 条 | **徽州首次获得出向关系** |
+| 新增 `located_in` | 11 个村落 / 名山归入所属县 | 为县份建立真实下级挂载 |
+| 新增 `native_of`（籍贯） | 胡适 / 胡雪岩 → 绩溪，詹天佑 → 婺源 | 人物与县份双向可达 |
+| 新增关系类型 `declared_in`（申报地区） | 11 条非遗项目 → 申报地区 | 关系类型 10 → **11** |
+
+**关系数 150 → 180**。校验：96 实体 / 180 关系 / 33 来源 / 11 分类 / 11 关系类型 / **无孤立节点**。
+「徽州」度数 41 → **47**（出 6 / 入 41），方向不再失衡。
+该约束已固化为测试 `test_huizhou_has_outgoing_relations`——若再退回纯汇点状态会立即失败。
+
+**文化百科页（`explore.py`）**
+
+| 区块 | 内容 |
+|---|---|
+| 检索 | 加权关键词检索：名称 100 / 别名 90 / 摘要 30 / 正文 15 / 属性 10 分，多词命中累加 |
+| 分类筛选 | 11 个分类快捷按钮，**带真实计数**（如「古村落 10」），可叠加「全部」 |
+| 排序 | 默认（检索相关度） / 按名称 / 按关联数 |
+| 分页 | 每页 12 条，3 列卡片网格 |
+| 空状态 | 无匹配时显示明确空状态并提示可尝试的分类，不渲染空白网格 |
+
+**实体详情页（`detail.py`）**
+
+| 区块 | 内容 |
+|---|---|
+| 头部 | 面包屑、名称、分类标签、别名 |
+| 属性表 | 结构化展示 `attributes`（年份、批次、数量等） |
+| 正文 | 实体 `description` |
+| 关联关系 | **按方向分组**：「从本实体出发」用 `→`，「指向本实体」用 `←` 并采用关系的 `inverse_name` |
+| 参考资料 | 每条来源可点击跳转（标题 + 出版方 + 访问日期） |
+| 图片 | 有图时展示并署名；无图时整块省略（不显示破图） |
+| 跳转 | 「在图谱中查看」——真实跳转并聚焦该实体；未选择实体 / 未知 id 显示对应错误状态 |
+
+**方向不造假**：详情页展示反向关系时，用关系的 `inverse_name`（如反向的「位于」显示为
+「境内有…」），而不是把箭头反过来仍用原标签。`tests/test_smoke.py` 中的
+`test_detail_page_relation_direction_is_honest` 专门断言这一点。
+
+**图谱指标（P3 后实时计算）**
+
+| 指标 | P2 | P3 |
+|---|---|---|
+| 节点 / 边 | 90 / 150 | **96 / 180**（与数据完全一致，平行边未丢失） |
+| 连通分量 | 1 | 1（全部 96 个实体同一网络） |
+| 网络直径 | 6 | 6 |
+| 平均最短关联距离 | 2.939 | **2.826** |
+| 图密度 | 0.0367 | **0.0388** |
+| 平均度 / 最大度 | 3.33 / 41 | **3.75 / 47** |
+| 孤立实体 | 0 | 0 |
+| 度数首位 | 徽州 41（纯入边） | **徽州 47（出 6 / 入 41）** |
+| 介数首位 | 徽州 0.7488 | **徽州 0.7545** |
+
+**验证**
+
+- `pytest`：**178 个测试函数 / 192 个用例全部通过**（P0–P3 累计），无警告。
+- `python scripts/validate_data.py`：数据校验全部通过，无孤立实体。
+- `python scripts/graph_report.py`：「全部检查通过」（建图保真 + 离线自洽）。
+- `AppTest` 冒烟测试含**真实点击按钮验证跳转**（不是断言文字存在而已）。
+- 应用启动：`/` = 200、`/_stcore/health` = 200。
+
+**遗留问题**
+
+- **图片素材仍未下载**：本机对 Wikimedia Commons 的 TCP 连接被阻断（非代码问题），
+  已把「无图」做成正常降级状态；可在能访问 Commons 的环境重跑 `scripts/fetch_images.py` 补齐。
+- 当前规模（96 节点 / 180 边）下单张全图 HTML 约 830 KB，一次性渲染仍流畅；
+  若实体超过 300 个需引入按分类分片或服务端预布局。
+
+**下一阶段（P4）**
+
+实现检索与 AI 问答：`src/qa/retriever.py`（jieba + BM25，返回带来源片段）、
+`src/qa/prompt.py`（带编号引用的提示词，约束模型只依据资料作答）、
+`src/qa/engine.py`（三层后端与自动降级）、`src/qa/errors.py`，
+接入问答页面并配套测试。回答须基于检索资料、可溯源。

@@ -147,6 +147,7 @@ def _render_controls(
             focus = st.selectbox(
                 "聚焦实体",
                 options=[""] + node_ids,
+                key="graph_focus_select",
                 format_func=lambda nid: "（不聚焦，显示全图）" if not nid else labels.get(nid, nid),
                 help="以该实体为中心，仅显示半径内的关联子图。",
             )
@@ -486,6 +487,14 @@ def render() -> None:
         )
 
     labels, node_ids = _options(graph)
+
+    # 支持从详情页「在图谱中查看」跳转过来：把请求的实体预置为当前聚焦对象。
+    # 该请求只消费一次（弹栈），避免用户手动改成「不聚焦」后又被拽回去。
+    requested = str(st.session_state.pop("graph_focus", "") or "")
+    if requested and requested in node_ids:
+        st.session_state["graph_focus_select"] = requested
+        st.session_state["graph_focus_panel_select"] = requested
+
     picked_cats, picked_types, focus, radius, physics, edge_labels = _render_controls(
         graph, labels, node_ids
     )

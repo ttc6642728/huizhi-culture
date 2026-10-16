@@ -12,7 +12,8 @@
     { "id": "author_of", "name": "著有", "inverse_name": "由……所著", "description": "人物与著作的著述关系。" },
     { "id": "representative_of", "name": "代表", "inverse_name": "代表者含", "description": "人物或其作品是某一群体、流派或精神的代表。" },
     { "id": "promotes", "name": "推动", "inverse_name": "受……推动", "description": "一方对另一方的形成与发展起到推动作用。" },
-    { "id": "related_to", "name": "相关", "inverse_name": "相关", "description": "在文化脉络上相互关联，无严格从属关系。" }
+    { "id": "related_to", "name": "相关", "inverse_name": "相关", "description": "在文化脉络上相互关联，无严格从属关系。" },
+    { "id": "declared_in", "name": "申报地区", "inverse_name": "境内项目", "description": "非物质文化遗产代表性项目的申报地区或单位，用于把非遗项目归入其申报所在的县域。" }
   ],
   "relations": [
     { "id": "r001", "source": "hongcun", "target": "huizhou_region", "type": "located_in", "label": "位于", "source_ids": ["src_unesco_1002"] },
@@ -176,6 +177,36 @@
     { "id": "r147", "source": "huishang", "target": "huizhou_region", "type": "located_in", "label": "位于", "source_ids": ["src_beijingreview"] },
     { "id": "r148", "source": "huangshan", "target": "xinan_huapai", "type": "related_to", "label": "相关", "description": "黄山自唐代起即为诗文绘画题材，明代以后催生山水画传统。", "source_ids": ["src_unesco_547"] },
     { "id": "r149", "source": "taipinghu", "target": "huangshan", "type": "related_to", "label": "相关", "description": "同处黄山市黄山区，共同构成区域山水景观。", "source_ids": ["src_gov_hs_wh30"] },
-    { "id": "r150", "source": "xinanjiang", "target": "huizhou_minju", "type": "related_to", "label": "相关", "description": "沿岸粉墙黛瓦的徽派民居与山水相互衬托。", "source_ids": ["src_wenming_sx"] }
+    { "id": "r150", "source": "xinanjiang", "target": "huizhou_minju", "type": "related_to", "label": "相关", "description": "沿岸粉墙黛瓦的徽派民居与山水相互衬托。", "source_ids": ["src_wenming_sx"] },
+    { "id": "r151", "source": "huizhou_region", "target": "shexian", "type": "composed_of", "label": "包含组成", "description": "歙县为“一府六县”首县，徽州府治所所在。", "source_ids": ["src_people_hz_oldcity"] },
+    { "id": "r152", "source": "huizhou_region", "target": "xiuning", "type": "composed_of", "label": "包含组成", "description": "休宁为“一府六县”之一，汉建安十三年由歙县西乡析置。", "source_ids": ["src_people_hz_oldcity"] },
+    { "id": "r153", "source": "huizhou_region", "target": "yixian", "type": "composed_of", "label": "包含组成", "description": "黟县为“一府六县”之一，秦置，与歙县同为徽州最古之县。", "source_ids": ["src_people_hz_oldcity"] },
+    { "id": "r154", "source": "huizhou_region", "target": "qimen", "type": "composed_of", "label": "包含组成", "description": "祁门为“一府六县”之一，唐永泰二年置县。", "source_ids": ["src_people_hz_oldcity"] },
+    { "id": "r155", "source": "huizhou_region", "target": "jixi", "type": "composed_of", "label": "包含组成", "description": "绩溪为“一府六县”之一，唐永泰二年析歙县华阳镇置，今属宣城市。", "source_ids": ["src_people_hz_oldcity"] },
+    { "id": "r156", "source": "huizhou_region", "target": "wuyuan", "type": "composed_of", "label": "包含组成", "description": "婺源为“一府六县”之一，唐开元二十八年置，今属江西省上饶市。", "source_ids": ["src_people_hz_oldcity"] },
+    { "id": "r157", "source": "hongcun", "target": "yixian", "type": "located_in", "label": "位于", "description": "宏村古建筑群位于黟县宏村镇。", "source_ids": ["src_yixian_gov_wenwu", "src_unesco_1002"] },
+    { "id": "r158", "source": "xidi", "target": "yixian", "type": "located_in", "label": "位于", "description": "西递古建筑群位于黟县西递镇。", "source_ids": ["src_yixian_gov_wenwu", "src_unesco_1002"] },
+    { "id": "r159", "source": "nanping", "target": "yixian", "type": "located_in", "label": "位于", "description": "南屏古建筑群位于黟县碧阳镇南屏村。", "source_ids": ["src_yixian_gov_wenwu"] },
+    { "id": "r160", "source": "pingshan", "target": "yixian", "type": "located_in", "label": "位于", "description": "屏山舒氏祠堂位于黟县宏村镇屏山村。", "source_ids": ["src_yixian_gov_wenwu"] },
+    { "id": "r161", "source": "guanlu", "target": "yixian", "type": "located_in", "label": "位于", "description": "关麓古建筑群位于黟县碧阳镇关麓村。", "source_ids": ["src_yixian_gov_wenwu"] },
+    { "id": "r162", "source": "tangyue", "target": "shexian", "type": "located_in", "label": "位于", "description": "棠樾村属歙县郑村镇。", "source_ids": ["src_gov_hs_arch", "src_gov_hs_quhua"] },
+    { "id": "r163", "source": "xucun", "target": "shexian", "type": "located_in", "label": "位于", "description": "许村属歙县许村镇。", "source_ids": ["src_gov_hs_route", "src_gov_hs_quhua"] },
+    { "id": "r164", "source": "yuliang", "target": "shexian", "type": "located_in", "label": "位于", "description": "渔梁属歙县徽城镇，渔梁坝位于村内。", "source_ids": ["src_wenming_sx", "src_gov_hs_quhua"] },
+    { "id": "r165", "source": "xuguo_shifang", "target": "shexian", "type": "located_in", "label": "位于", "description": "许国石坊立于歙县徽州古城内。", "source_ids": ["src_wenming_tangyue"] },
+    { "id": "r166", "source": "qiyunshan", "target": "xiuning", "type": "located_in", "label": "位于", "description": "齐云山位于休宁县齐云山镇。", "source_ids": ["src_gov_hs_ich", "src_gov_hs_quhua"] },
+    { "id": "r167", "source": "hushi", "target": "jixi", "type": "native_of", "label": "籍贯", "description": "胡适籍贯徽州绩溪（今属安徽省宣城市）。", "source_ids": ["src_gov_hs_people", "src_ahnews_guchen"] },
+    { "id": "r168", "source": "hu_xueyan", "target": "jixi", "type": "native_of", "label": "籍贯", "description": "胡雪岩籍贯徽州绩溪。", "source_ids": ["src_gov_hs_people"] },
+    { "id": "r169", "source": "zhantianyou", "target": "wuyuan", "type": "native_of", "label": "祖籍", "description": "詹天佑生于广东南海，祖籍徽州婺源（今属江西省上饶市）。", "source_ids": ["src_gov_hs_people"] },
+    { "id": "r170", "source": "sheyan", "target": "shexian", "type": "declared_in", "label": "申报地区", "description": "歙砚制作技艺为第一批国家级非遗（2006 年），申报地区歙县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r171", "source": "huimo", "target": "shexian", "type": "declared_in", "label": "申报地区", "description": "徽墨制作技艺为第一批国家级非遗（2006 年），申报地区含歙县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r172", "source": "huipai_penjing", "target": "shexian", "type": "declared_in", "label": "申报地区", "description": "徽派盆景技艺为第二批国家级非遗（2008 年），申报地区歙县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r173", "source": "zhangyitie", "target": "shexian", "type": "declared_in", "label": "申报地区", "description": "张一帖内科疗法为第三批国家级非遗（2011 年），申报地区歙县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r174", "source": "xiyuan_houke", "target": "shexian", "type": "declared_in", "label": "申报地区", "description": "西园喉科医术为第四批国家级非遗（2014 年），申报地区歙县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r175", "source": "wanan_luopan", "target": "xiuning", "type": "declared_in", "label": "申报地区", "description": "万安罗盘制作技艺为第一批国家级非遗（2006 年），申报地区休宁县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r176", "source": "qiyunshan_yinyue", "target": "xiuning", "type": "declared_in", "label": "申报地区", "description": "道教音乐（齐云山道场音乐）为第二批国家级非遗（2008 年），申报地区休宁县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r177", "source": "huizhou_bandenglong", "target": "xiuning", "type": "declared_in", "label": "申报地区", "description": "龙舞（徽州板凳龙）为第五批国家级非遗（2021 年），申报地区休宁县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r178", "source": "mulianxi", "target": "qimen", "type": "declared_in", "label": "申报地区", "description": "目连戏（徽州目连戏）为第一批国家级非遗（2006 年），项目编号 Ⅳ-87，申报地区祁门县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r179", "source": "qimen_nuowu", "target": "qimen", "type": "declared_in", "label": "申报地区", "description": "傩舞（祁门傩舞）为第二批国家级非遗（2008 年），申报地区祁门县。", "source_ids": ["src_gov_hs_ich"] },
+    { "id": "r180", "source": "huizhou_ciji", "target": "qimen", "type": "declared_in", "label": "申报地区", "description": "祭祖习俗（徽州祠祭）为第四批国家级非遗（2014 年），申报地区祁门县。", "source_ids": ["src_gov_hs_ich"] }
   ]
 }

@@ -54,6 +54,11 @@
 | `src_people_hz` | 人民日报客户端：一府六县具体范围、新安画派与黄山画派 |
 | `src_wenming_sx` | 中国文明网：许国石坊形制与题字者、歙县「牌坊之乡」、棠樾牌坊群数量、新安江山水画廊 |
 | `src_gov_hs_summit` | 黄山市人民政府：徽商「贾而好儒」、歙县鱼灯非遗活化实践 |
+| `src_people_hz_oldcity` | 人民日报客户端《歙县徽州古城》：一府六县各县置县年份 |
+| `src_gov_hs_quhua` | 黄山市人民政府：人口区划 / 行政区划简册，各县现行归属 |
+| `src_yixian_gov_wenwu` | 黟县人民政府：文物保护单位清单（载宏村、西递、南屏、屏山、关麓等村落具体地址） |
+| `src_gov_hs_chengkan` | 黄山市人民政府：呈坎古村落（原属歙县、今属徽州区） |
+| `src_ahnews_guchen` | 安徽新闻网：安徽旅游十大古村镇 |
 
 ---
 
@@ -79,4 +84,19 @@
 
 ## 五、图片素材
 
-图片计划从 Wikimedia Commons 等自由授权来源下载，逐一登记授权协议、作者与原始链接，汇总于 `assets/images/CREDITS.md`。该工作安排在 P3 阶段（浏览体验）执行。
+图片计划从 Wikimedia Commons 等自由授权来源下载，逐一登记授权协议、作者与原始链接，汇总于 `assets/images/CREDITS.md`。
+
+**P3 实测结论：本机网络无法访问 Wikimedia。** `commons.wikimedia.org` 的 DNS 可正常解析
+（→ `103.102.166.224`），但直连、走代理、脱离沙箱三种方式在 TCP 层均超时（`code=000`）；
+同环境的 `ihchina.cn`、`mirrors.aliyun.com` 返回 `200`，Openverse（`api.openverse.org`）亦不可达。
+**结论：网络阻断，非代码问题。**
+
+因此本项目在 P3 阶段**未下载任何图片**，而是：
+
+1. 完整实现抓取脚本 `scripts/fetch_images.py`（许可白名单 + 检索/排除正则 + 分辨率与画幅过滤 + 联网通道自动探测），
+   可在任何能访问 Commons 的网络环境一键复现；
+2. 由 `assets/images/README.md` 记录实测证据与复现命令；
+3. 应用在无图时**完整可用**（`src/data/images.py` 三种缺失场景全部安全降级，界面纯排版降级、不显示破图）。
+
+**授权白名单**：仅接受 CC0 / CC BY / CC BY-SA / Public domain / GFDL；
+**主动拒绝 NC（非商用）与 ND（禁演绎）**，避免授权瑕疵。

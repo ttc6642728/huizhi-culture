@@ -101,9 +101,11 @@ def test_filter_by_category(graph: nx.MultiDiGraph) -> None:
         assert view.nodes[v]["category"] == "village"
 
 
-def test_filter_by_relation_type(graph: nx.MultiDiGraph) -> None:
+def test_filter_by_relation_type(graph: nx.MultiDiGraph, dataset) -> None:
     view = gb.filter_graph(graph, relation_types=["located_in"])
-    assert view.number_of_edges() == 26
+    expected = sum(1 for r in dataset.relations if r.type == "located_in")
+    assert expected > 0
+    assert view.number_of_edges() == expected
     assert {d["type"] for *_, d in view.edges(keys=True, data=True)} == {"located_in"}
 
 
@@ -413,18 +415,19 @@ def test_network_html_escapes_labels(graph: nx.MultiDiGraph) -> None:
     assert "&lt;script&gt;" in html or "\\u003cscript\\u003e" in html
 
 
-def test_network_html_payload_contains_exact_data(graph: nx.MultiDiGraph) -> None:
+def test_network_html_payload_contains_exact_data(graph: nx.MultiDiGraph, dataset) -> None:
     """把渲染产物里的 JS 数据载荷解析出来，逐项核对。
 
     这比「HTML 里出现了某个字符串」强得多：它证明交给 vis-network 的
     节点与边数量、属性与源数据完全一致，没有丢关系也没有多造节点。
+    期望值直接取自数据集而非写死数字，数据扩充时不会产生假失败。
     """
     html = gv.build_network_html(graph, height=600)
     nodes = _extract_payload(html, "nodes")
     edges = _extract_payload(html, "edges")
 
-    assert len(nodes) == graph.number_of_nodes() == 90
-    assert len(edges) == graph.number_of_edges() == 150
+    assert len(nodes) == graph.number_of_nodes() == len(dataset.entities)
+    assert len(edges) == graph.number_of_edges() == len(dataset.relations)
 
     node_ids = {n["id"] for n in nodes}
     assert node_ids == set(graph.nodes())

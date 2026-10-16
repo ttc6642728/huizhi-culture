@@ -162,3 +162,108 @@ def test_category_names_match_approved_dimensions(repo: Repository) -> None:
         "文献典籍",
     ]:
         assert expected in names, f"缺少既定分类：{expected}"
+
+
+# --------------------------------------------------------------------------
+# 一府六县
+# --------------------------------------------------------------------------
+
+#: 徽州一府六县
+SIX_COUNTIES = (
+    ("shexian", "歙县", "安徽省黄山市"),
+    ("xiuning", "休宁", "安徽省黄山市"),
+    ("yixian", "黟县", "安徽省黄山市"),
+    ("qimen", "祁门", "安徽省黄山市"),
+    ("jixi", "绩溪", "安徽省宣城市"),
+    ("wuyuan", "婺源", "江西省上饶市"),
+)
+
+
+@pytest.mark.parametrize("county_id,name,location", SIX_COUNTIES)
+def test_six_counties_are_present(repo: Repository, county_id: str, name: str, location: str) -> None:
+    """一府六县必须作为实体存在，且所在地与史料一致。"""
+    county = repo.require(county_id)
+    assert county.name == name
+    assert location in county.attributes.get("所在地", "")
+
+
+def test_county_placement_follows_historical_record(repo: Repository) -> None:
+    """《歙县徽州古城》所载置县年代必须落实到各属性中。"""
+    expected = {
+        "shexian": "秦（公元前 221 年）",
+        "xiuning": "东汉建安十三年（208 年）",
+        "yixian": "秦（公元前 221 年）",
+        "qimen": "唐永泰二年（766 年）",
+        "jixi": "唐永泰二年（766 年）",
+        "wuyuan": "唐开元二十八年（740 年）",
+    }
+    assert set(expected) == {c[0] for c in SIX_COUNTIES}
+    for county_id, era in expected.items():
+        assert repo.require(county_id).attributes.get("置县", "").startswith(era)
+
+
+def test_huizhou_has_outgoing_relations(repo: Repository) -> None:
+    """徽州不能是纯汇点：必须存在以徽州为起点的关系。
+
+    否则图谱中心只有入边，无法从「徽州」出发浏览其下辖县份。
+    """
+    out, inc = repo.relations_of("huizhou_region")
+    assert out, "徽州没有任何出向关系"
+    assert inc, "徽州应当同时保留大量入向关系"
+    targets = {r.target for r in out}
+    assert targets == {c[0] for c in SIX_COUNTIES}, "徽州的出向关系应指向一府六县"
+    assert all(r.type == "composed_of" for r in out)
+
+
+def test_counties_are_not_isolated(repo: Repository) -> None:
+    """六个县都应有实际连接，不能是孤立节点。"""
+    for county_id, name, _ in SIX_COUNTIES:
+        assert repo.degree(county_id) > 0, f"{name} 是孤立节点"
+
+
+def test_ich_declarations_point_to_correct_county(repo: Repository) -> None:
+    """国家级非遗项目的申报地区必须与官方名录一致。"""
+    expected = {
+        "sheyan": "shexian",
+        "wanan_luopan": "xiuning",
+        "qiyunshan_yinyue": "xiuning",
+        "huizhou_bandenglong": "xiuning",
+        "mulianxi": "qimen",
+        "qimen_nuowu": "qimen",
+        "huizhou_ciji": "qimen",
+        "huipai_penjing": "shexian",
+        "zhangyitie": "shexian",
+        "xiyuan_houke": "shexian",
+    }
+    for project_id, county_id in expected.items():
+        declared = [r for r in repo.relations_of(project_id)[0] if r.type == "declared_in"]
+        assert declared, f"{repo.require(project_id).name} 缺少申报地区关系"
+        assert [r.target for r in declared] == [county_id]
+
+
+def test_village_county_placement(repo: Repository) -> None:
+    """村落所属县份应与黄山市行政区划、黟县文保清单一致。"""
+    expected = {
+        "hongcun": "yixian",
+        "xidi": "yixian",
+        "nanping": "yixian",
+        "pingshan": "yixian",
+        "guanlu": "yixian",
+        "tangyue": "shexian",
+        "xucun": "shexian",
+        "yuliang": "shexian",
+    }
+    for village_id, county_id in expected.items():
+        placed = [
+            r for r in repo.relations_of(village_id)[0]
+            if r.type == "located_in" and r.target == county_id
+        ]
+        assert placed, f"{repo.require(village_id).name} 未挂到 {repo.require(county_id).name}"
+
+
+def test_six_counties_are_sourced(repo: Repository) -> None:
+    """新增的县份实体与关系都必须有可核查来源。"""
+    for county_id, name, _ in SIX_COUNTIES:
+        county = repo.require(county_id)
+        assert county.source_ids, f"{name} 没有来源"
+        assert repo.sources_of(county), f"{name} 的来源无法解析"

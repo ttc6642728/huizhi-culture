@@ -19,18 +19,27 @@
 | P0 脚手架 | 13 | 13 | 0 | 1.43s |
 | P1 数据层 | 72 | 72 | 0 | 2.57s |
 | P2 知识图谱 | 133 | 133 | 0 | 10.73s |
+| P3 浏览体验 | 192 | 192 | 0 | 7.64s |
 
-**当前累计：133 通过 / 0 失败 / 0 跳过。** 无弃用或运行时警告。
+**当前累计：192 通过 / 0 失败 / 0 跳过。** 无弃用或运行时警告。
 
-分文件用例数：
+> 用例数大于测试函数数：部分测试用 `@pytest.mark.parametrize` 展开
+> （如「一府六县」六个县份各一条用例）。当前共 **178 个测试函数 / 192 个用例**。
+
+分文件用例数（P3 后）：
 
 ```
+tests/test_components.py       12
 tests/test_config.py            8
-tests/test_data_integrity.py   14
+tests/test_data_integrity.py   26
 tests/test_graph.py            60
+tests/test_image_library.py     8
 tests/test_loader.py           20
+tests/test_nav.py              16
 tests/test_repository.py       25
-tests/test_smoke.py             6
+tests/test_smoke.py            17
+--------------------------------------------------
+合计                          192
 ```
 
 ---
@@ -191,19 +200,151 @@ tests/test_smoke.py ......                                      [100%]
 
 ---
 
+## P3 阶段测试记录
+
+**执行时间**：2026-10-16
+**命令**：`.venv\Scripts\python.exe -m pytest`
+
+```
+platform win32 -- Python 3.13.14, pytest-9.1.1, pluggy-1.7.0
+rootdir: E:\huizhi-culture
+configfile: pytest.ini
+testpaths: tests
+collected 192 items
+
+........................................................................ [ 37%]
+........................................................................ [ 75%]
+................................................                         [100%]
+
+============================ 192 passed in 7.64s =============================
+```
+
+### tests/test_nav.py（16 项）— 导航模型
+
+| 用例 | 验证内容 | 结果 |
+|---|---|---|
+| `test_nav_items_have_required_fields` | 每个导航项含 key / label / icon / module / phase | PASS |
+| `test_nav_tree_is_the_only_source_of_sidebar_entries` | 侧边栏入口只来自 `NAV_ITEMS` | PASS |
+| `test_nav_item_is_either_implemented_or_marked_pending` | 每个入口要么有模块文件，要么显式标注阶段 | PASS |
+| `test_hidden_pages_map_to_a_visible_owner` | 隐藏页（详情页）归属到存在的可见入口 | PASS |
+| `test_hidden_pages_never_appear_in_sidebar` | 隐藏页不出现在侧边栏 | PASS |
+| `test_resolve_route_defaults_to_home` | 无状态时路由回落到首页 | PASS |
+| `test_resolve_route_returns_stored_page` | 会话状态中的页面被正确解析 | PASS |
+| `test_resolve_route_rejects_unknown_page` | 未知页面不被接受（回落到首页） | PASS |
+| `test_resolve_route_ignores_legacy_query_param`（参数化） | 地址栏残留的旧 `?page=` 不会把用户拽回上一页 | PASS |
+| `test_highlight_of_hidden_page_points_to_owner` | 详情页高亮到「文化百科」 | PASS |
+| `test_highlight_of_visible_page_is_itself` | 可见页高亮为自身 | PASS |
+| `test_goto_sets_page_and_params` | 跳转写入会话状态 | PASS |
+| `test_goto_clears_stale_params` | 跳转清掉上一次的残留参数 | PASS |
+| `test_nav_keys_are_unique` | 导航 key 不重复 | PASS |
+
+### tests/test_image_library.py（8 项）— 图片库降级
+
+| 用例 | 验证内容 | 结果 |
+|---|---|---|
+| `test_missing_manifest_yields_empty_library` | 清单文件不存在时返回空库、不抛错 | PASS |
+| `test_corrupt_manifest_yields_empty_library` | JSON 损坏时安全降级 | PASS |
+| `test_entry_with_missing_file_is_skipped` | 图片文件丢失的条目被跳过 | PASS |
+| `test_only_free_licenses_are_accepted` | 仅接受 CC0 / CC BY / CC BY-SA / PD / GFDL；拒绝 NC / ND | PASS |
+| `test_credit_falls_back_when_author_missing` | 作者缺失时 credit 返回「作者见来源页面」 | PASS |
+| `test_lookup_by_entity_id` | 按实体 id 取图正确 | PASS |
+| `test_unillustrated_entity_returns_none` | 无图实体返回 `None`（而非报错） | PASS |
+| `test_library_is_immutable_and_cached` | 库对象不可变且可缓存 | PASS |
+
+### tests/test_components.py（12 项）— 展示组件
+
+| 用例 | 验证内容 | 结果 |
+|---|---|---|
+| `test_crumb_renders_path` | 面包屑按层级渲染 | PASS |
+| `test_category_chip_uses_category_color` | 分类标签使用该分类专色 | PASS |
+| `test_entity_card_contains_name_and_summary` | 实体卡片含名称与摘要 | PASS |
+| `test_entity_card_escapes_html` | 卡片文本转义，防注入 | PASS |
+| `test_detail_head_shows_aliases` | 详情头展示别名 | PASS |
+| `test_relation_row_direction_arrows` | 出向用 `→`、入向用 `←` | PASS |
+| `test_relation_row_uses_inverse_name_for_inbound` | 入向关系用 `inverse_name`（方向不造假） | PASS |
+| `test_relation_row_shows_source_count` | 来源数 > 0 时显示「N 条来源」 | PASS |
+| `test_source_row_is_clickable_link` | 来源行是合法可点击链接 | PASS |
+| `test_count_line_reports_real_count` | 计数行显示真实数量 | PASS |
+| `test_group_title_renders` | 分组标题渲染 | PASS |
+| `test_empty_and_error_states_render_messages` | 空状态与错误状态各自渲染提示 | PASS |
+
+### tests/test_smoke.py（17 项）— 脚本级冒烟（含真实点击）
+
+P3 新增以下用例（在原有基础上扩充）：
+
+| 用例 | 验证内容 | 结果 |
+|---|---|---|
+| `test_explore_page_renders_real_content` | 百科页渲染、标题含「文化百科」、不含「尚未实现」 | PASS |
+| `test_explore_search_returns_matching_entity` | 检索「宏村」返回对应卡片 | PASS |
+| `test_explore_empty_state_on_no_match` | 无匹配时出现空状态（断言 `class="hz-ecard"` 不出现） | PASS |
+| `test_explore_category_filter_counts_are_real` | 分类按钮计数与数据集一致 | PASS |
+| `test_detail_page_renders_entity` | 详情页渲染指定实体 | PASS |
+| `test_detail_page_relation_direction_is_honest` | 反向关系使用 `inverse_name`，不伪装成同向 | PASS |
+| `test_detail_page_unknown_entity_shows_error` | 未知实体 id 显示错误状态 | PASS |
+| `test_detail_page_without_selection_shows_hint` | 未选择实体时给出提示 | PASS |
+| `test_clicking_entity_card_navigates_to_detail` | **真实点击**百科卡片后跳转到详情页 | PASS |
+
+### tests/test_data_integrity.py（26 项）— 新增六县与来源校验
+
+| 用例 | 验证内容 | 结果 |
+|---|---|---|
+| `test_six_counties_present`（参数化，6 个县份） | 歙县/休宁/黟县/祁门/绩溪/婺源均在数据集中 | PASS |
+| `test_county_placement_follows_historical_record` | 各县置县年代与史载一致 | PASS |
+| `test_huizhou_has_outgoing_relations` | **「徽州」必须有出向关系**（防止退回纯汇点） | PASS |
+| `test_counties_are_not_isolated` | 六个县份均有至少一条关系 | PASS |
+| `test_intangible_heritage_declared_region_present` | 非遗项目均有 `declared_in` 申报地区 | PASS |
+| `test_settlements_located_in_their_county` | 村落 `located_in` 所属县正确 | PASS |
+| `test_new_sources_are_wellformed` | 新增来源 id / url / 出版方 / 访问日期完整 | PASS |
+
+### 附加验证
+
+| 验证方式 | 命令 | 结果 |
+|---|---|---|
+| 数据校验 CLI | `python scripts/validate_data.py` | 通过，无孤立实体 |
+| 图谱验证报告 | `python scripts/graph_report.py` | 「全部检查通过」（建图保真 + 离线自洽） |
+| 图片抓取脚本 dry-run | `python scripts/fetch_images.py --dry-run` | 脚本可运行、过滤逻辑真实生效（联网通道不可达，未下载） |
+| 语法编译 | `python -m compileall app.py src scripts` | 通过 |
+| Streamlit 脚本执行 | `AppTest`（首页 / 图谱 / 百科 / 详情 / 待开发页） | 无异常、无警告 |
+| 应用启动 | `streamlit run app.py` | 启动成功，`/_stcore/health` = 200 |
+
+### 数据规模（校验脚本输出）
+
+```
+实体   96
+关系   180
+来源   33
+分类   11
+关系类型 11
+孤立实体：无（全部实体至少有一条关系）
+「徽州」度 = 47（出 6 / 入 41）
+```
+
+### P3 图谱实测数据
+
+```
+节点 96 / 边 180（与数据完全一致）      连通分量 1（全部实体同一网络）
+网络直径 6                              平均最短关联距离 2.826
+图密度 0.0388                           平均度 / 最大度 3.75 / 47
+孤立实体 0
+度数首位「徽州」47（出 6 / 入 41）        介数首位「徽州」0.7545
+```
+
+---
+
 ## 尚未覆盖 / 遗留问题
 
 | 项目 | 说明 | 计划 |
 |---|---|---|
 | 检索与问答测试 | 检索与三层后端尚未实现 | P4 |
 | 工作流测试 | 智能体工作流尚未实现 | P5 |
-| 大图性能 | 当前 90 节点的交互式渲染实测约 0.06 s / 830 KB；若实体超过 300 个需引入分片或预布局 | 视数据规模而定 |
+| 图片素材 | 本机对 Wikimedia Commons 的 TCP 连接被阻断（非代码问题），未下载图片；已做优雅降级 | 可在能访问 Commons 的网络重跑 `scripts/fetch_images.py` |
+| 大图性能 | 当前 96 节点的交互式渲染实测约 830 KB；若实体超过 300 个需引入分片或预布局 | 视数据规模而定 |
 | 界面视觉回归 | 暂无截图对比测试 | P6 视情况补充 |
 | 真实模型联调 | API Key 已验证可用（HTTP 200），但问答链路尚未实现，未做端到端联调 | P4 |
-| 数据规模 | 实际交付 90 个实体，略高于原计划的 60–80；已确认无孤立节点 | 视需要继续扩充 |
-| 方向均衡性 | 「徽州」的 41 条关系全部为入边，是数据特征而非缺陷 | 视需要补充出向关系 |
 
 > 说明：本报告只记录**实际执行过**的测试结果；未实现的模块不会被标记为通过。
-> 本阶段修复的 4 个由测试暴露的真实缺陷：`filter_graph` 把空列表误当作「筛选为空」、
-> 平行边关系 id 未落到边数据导致路径无法溯源、`card_html` 缺少 `flat` 参数导致首页渲染异常、
-> 资源清洗对自闭合标签处理不彻底。
+>
+> P3 阶段由测试暴露并修复的真实缺陷：百科页空状态断言把注入的 CSS 规则误判为渲染内容
+> （改为断言 `class="hz-ecard"` 出现与否）、组件测试传参不一致导致「0 条来源」误断言。
+> 另外 `test_graph.py` 与 `test_smoke.py` 中原先硬编码的数量断言（`== 90` / `== 150` / `== 26`）
+> 已统一改为**从数据集动态取期望值**，使数据扩充不再引发脆弱的假失败。

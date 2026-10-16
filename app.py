@@ -13,6 +13,7 @@ import streamlit as st
 
 from src import __version__, config
 from src.ui import components as ui
+from src.ui import nav
 from src.ui.theme import inject_theme
 
 # --------------------------------------------------------------------------
@@ -30,19 +31,16 @@ inject_theme()
 
 
 # --------------------------------------------------------------------------
-# 导航定义
+# 导航定义（模型集中在 src/ui/nav.py）
 # --------------------------------------------------------------------------
 
 #: 侧边栏导航项：key 同时作为 ``src.ui.pages.<key>`` 模块名
-NAV_ITEMS: List[Dict[str, str]] = [
-    {"key": "home", "label": "文化探索", "phase": ""},
-    {"key": "explore", "label": "文化百科", "phase": "P3"},
-    {"key": "graph", "label": "知识图谱", "phase": "P2"},
-    {"key": "ask", "label": "AI 问答", "phase": "P4"},
-    {"key": "about", "label": "关于项目", "phase": "P5"},
-]
+NAV_ITEMS: List[Dict[str, str]] = nav.NAV_ITEMS
 
-_DEFAULT_PAGE = "home"
+#: 不在侧边栏出现、但可被跳转到的页面（详情页由列表页进入）
+HIDDEN_PAGES: Dict[str, str] = nav.HIDDEN_PAGES
+
+_DEFAULT_PAGE = nav.DEFAULT_PAGE
 
 
 def _load_page(key: str) -> Optional[Callable[[], None]]:
@@ -94,11 +92,11 @@ with st.sidebar:
     )
 
     current = st.session_state.get("page", _DEFAULT_PAGE)
+    highlight = nav.highlight_of(current)
     for item in NAV_ITEMS:
-        is_active = item["key"] == current
-        label = item["label"] if not item["phase"] else f"{item['label']}"
+        is_active = item["key"] == highlight
         if st.button(
-            label,
+            item["label"],
             key=f"nav_{item['key']}",
             use_container_width=True,
             type="primary" if is_active else "secondary",
@@ -119,25 +117,29 @@ with st.sidebar:
         st.caption("未检测到模型凭证，已自动使用本地检索式后端。")
 
     st.markdown("<hr/>", unsafe_allow_html=True)
-    st.caption(f"v{__version__}　·　已完成 P0 脚手架 / P1 数据层 / P2 知识图谱")
+    st.caption(
+        f"v{__version__}　·　已完成 P0 脚手架 / P1 数据层 / P2 知识图谱 / P3 浏览体验"
+    )
 
 
 # --------------------------------------------------------------------------
 # 路由
 # --------------------------------------------------------------------------
 
-_page_key = st.session_state.get("page", _DEFAULT_PAGE)
+_page_key = nav.resolve_route(st.session_state.get("page"))
 _item = next((i for i in NAV_ITEMS if i["key"] == _page_key), None)
 
-if _item is None:
-    st.session_state["page"] = _DEFAULT_PAGE
-    st.rerun()
+if _page_key != st.session_state.get("page"):
+    # 非法页面标识：回写到 session_state，避免每次交互都重新判定
+    st.session_state["page"] = _page_key
 
 _renderer = _load_page(_page_key)
 if _renderer is not None:
     _renderer()
-elif _item["phase"]:
+elif _item is not None and _item["phase"]:
     _render_pending(_item["label"], _item["phase"])
+elif _page_key in HIDDEN_PAGES:
+    st.error(f"页面模块 src/ui/pages/{_page_key}.py 缺失。")
 else:
     st.error(f"页面模块 src/ui/pages/{_page_key}.py 缺失，且未标注交付阶段。")
 

@@ -1,6 +1,7 @@
-"""徽知首页：项目引导 + 环境自检 + 模块交付进度。
+"""徽知首页：项目引导 + 数据概况 + 图谱概况 + 环境自检 + 模块交付进度。
 
-P1 阶段起，这里会补充真实的实体 / 关系 / 资料来源统计。
+页面上的每个数字都来自实时加载的数据或实时计算的图谱，
+模块进度用 ``importlib`` 真实探测，不写死任何「已完成 / 待开发」标签。
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from src.data.repository import Repository
 from src.graph import analysis as ga
 from src.graph import runtime as graph_runtime
 from src.ui import components as ui
+from src.ui import datastore, nav
 
 
 #: 需要检查的运行依赖 -> 用途说明
@@ -38,6 +40,9 @@ _CORE_MODULES: List[Tuple[str, str, str]] = [
     ("src.graph.analysis", "图谱分析", "P2"),
     ("src.graph.visualize", "图谱可视化", "P2"),
     ("src.ui.pages.graph", "知识图谱页", "P2"),
+    ("src.data.images", "图片库与署名", "P3"),
+    ("src.ui.pages.explore", "文化百科页", "P3"),
+    ("src.ui.pages.detail", "实体详情页", "P3"),
     ("src.qa.retriever", "资料检索", "P4"),
     ("src.qa.engine", "问答引擎", "P4"),
     ("src.agent.workflow", "智能体工作流", "P5"),
@@ -294,12 +299,36 @@ def render() -> None:
     _render_checklist()
 
     st.info(
-        "当前进度：**P2 知识图谱已完成**——图谱建模（多重有向图，完整保留 150 条关系，"
-        "含同向平行边）、结构分析（度数/介数中心性、连通分量、直径、最短关联路径、模块度聚类）"
-        "与离线自洽的交互式可视化均已接入，并附带对应测试。"
-        "浏览体验（P3）、AI 问答（P4）、智能体工作流（P5）尚在开发中，"
-        "上方「待开发」状态即为真实进度。"
+        "当前进度：**P3 浏览体验已完成**——文化百科页支持关键词检索与分类筛选，"
+        "实体详情页展示结构化属性、正文、以本实体为主语的关联关系（方向如实标注）、"
+        "可点击的参考资料与图片署名；上一阶段的图谱建模与结构分析保持可用。"
+        "AI 问答（P4）与智能体工作流（P5）尚在开发中，上方「待开发」状态即为真实进度。"
     )
+
+    _render_quick_entry()
+
+
+def _render_quick_entry() -> None:
+    """首页快捷入口：跳转到已交付的页面（均为真实跳转）。"""
+    ui.render_section("开始探索")
+    cols = st.columns([1, 1, 1, 3], gap="small")
+    with cols[0]:
+        nav.nav_button("浏览文化百科", "explore", key="home_go_explore", type="primary")
+    with cols[1]:
+        nav.nav_button("打开知识图谱", "graph", key="home_go_graph")
+    with cols[2]:
+        try:
+            dataset = load_dataset()
+        except DataError:
+            dataset = None
+        first = dataset.entities[0].id if dataset and dataset.entities else ""
+        if first:
+            nav.nav_button(
+                "随机看一个实体",
+                "detail",
+                key="home_go_random",
+                entity_id=first,
+            )
 
 
 __all__ = ["render"]

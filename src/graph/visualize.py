@@ -27,29 +27,15 @@ from pyvis.network import Network
 
 from src.graph.analysis import PathResult
 from src.graph.builder import EmptyGraphError, GraphError, max_degree
-from src.ui.theme import COLORS, FONTS
+from src.ui.theme import CATEGORY_COLORS, COLORS, FALLBACK_COLOR, FONTS
 
 # --------------------------------------------------------------------------
 # 配色
 # --------------------------------------------------------------------------
 
-#: 各分类的节点颜色（低饱和，来自设计系统的徽州黑白灰 + 少量点缀色）
-CATEGORY_COLORS: Dict[str, Dict[str, str]] = {
-    "village":      {"bg": "#7A7355", "border": "#5E5942"},   # 古村落 · 橄榄灰
-    "architecture": {"bg": "#3B3935", "border": "#22201C"},   # 徽派建筑 · 墨石
-    "heritage":     {"bg": "#B23A2F", "border": "#8E2A21"},   # 非遗 · 朱砂
-    "person":       {"bg": "#7A6A8A", "border": "#5F5270"},   # 历史名人 · 紫檀
-    "merchant":     {"bg": "#8A6A22", "border": "#6E531A"},   # 徽商 · 古铜
-    "craft":        {"bg": "#2F6E7A", "border": "#235661"},   # 工艺 · 青碧
-    "folk":         {"bg": "#A85A2E", "border": "#87471F"},   # 民俗 · 陶土
-    "food":         {"bg": "#8C5A4A", "border": "#703F32"},   # 徽菜 · 赭
-    "clan_edu":     {"bg": "#4A5A78", "border": "#384763"},   # 宗族文教 · 黛蓝
-    "classics":     {"bg": "#6B6357", "border": "#524C42"},   # 文献 · 石褐
-    "nature":       {"bg": "#4F7A6A", "border": "#3C6053"},   # 山川 · 苍绿
-}
-
-#: 未登记分类的兜底颜色
-FALLBACK_COLOR = {"bg": "#8C867A", "border": "#6E695F"}
+#: 说明：分类配色统一定义在设计系统 ``src.ui.theme.CATEGORY_COLORS``，
+#: 图谱节点、图例、实体卡片与详情页共用同一套颜色，保证同一实体在各处颜色一致。
+#: 此处直接复用，不再单独维护一份，避免两处色值走偏。
 
 LABEL_MAX = 12
 

@@ -52,6 +52,30 @@ FONTS = {
 RADIUS = {"sm": "6px", "md": "10px", "lg": "14px"}
 SPACE = {"xs": "4px", "sm": "8px", "md": "16px", "lg": "24px", "xl": "40px"}
 
+#: 分类专色：低饱和、可区分，同时保持「黑白灰 + 朱砂」的整体气质。
+#: 图谱节点、图例、实体卡片与详情页共用同一套配色，保证同一实体在各处颜色一致。
+CATEGORY_COLORS = {
+    "village":      {"bg": "#7A7355", "border": "#5E5942"},   # 古村落 · 橄榄灰
+    "architecture": {"bg": "#3B3935", "border": "#22201C"},   # 徽派建筑 · 墨石
+    "heritage":     {"bg": "#B23A2F", "border": "#8E2A21"},   # 非遗 · 朱砂
+    "person":       {"bg": "#7A6A8A", "border": "#5F5270"},   # 历史名人 · 紫檀
+    "merchant":     {"bg": "#8A6A22", "border": "#6E531A"},   # 徽商 · 古铜
+    "craft":        {"bg": "#2F6E7A", "border": "#235661"},   # 工艺 · 青碧
+    "folk":         {"bg": "#A85A2E", "border": "#87471F"},   # 民俗 · 陶土
+    "food":         {"bg": "#8C5A4A", "border": "#703F32"},   # 徽菜 · 赭
+    "clan_edu":     {"bg": "#4A5A78", "border": "#384763"},   # 宗族文教 · 黛蓝
+    "classics":     {"bg": "#6B6357", "border": "#524C42"},   # 文献 · 石褐
+    "nature":       {"bg": "#4F7A6A", "border": "#3C6053"},   # 山川 · 苍绿
+}
+
+#: 未登记分类的兜底颜色
+FALLBACK_COLOR = {"bg": "#8C867A", "border": "#6E695F"}
+
+
+def category_color(category_id: str) -> str:
+    """取分类主色（十六进制）。未登记分类返回兜底色。"""
+    return CATEGORY_COLORS.get(category_id, FALLBACK_COLOR)["bg"]
+
 
 def _css() -> str:
     c = COLORS
@@ -438,6 +462,203 @@ input, textarea, [data-baseweb="select"] > div {{
     padding: .22rem 0;
 }}
 .hz-steps__mark {{ color: {c['cinnabar']}; font-size: .72rem; flex: none; }}
+
+/* ===== 面包屑 ===== */
+.hz-crumb {{
+    font-size: .82rem;
+    color: {c['ink_mute']};
+    letter-spacing: .02em;
+    margin-bottom: .6rem;
+}}
+.hz-crumb span {{ color: {c['line_strong']}; margin: 0 .35rem; }}
+
+/* ===== 实体卡片 ===== */
+.hz-ecard {{
+    background: {c['surface']};
+    border: 1px solid {c['line']};
+    border-radius: {RADIUS['md']};
+    padding: .95rem 1.05rem 1rem 1.05rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: .42rem;
+    transition: border-color .14s ease, box-shadow .14s ease;
+}}
+.hz-ecard:hover {{
+    border-color: {c['line_strong']};
+    box-shadow: 0 1px 0 {c['line']};
+}}
+.hz-ecard__top {{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+}}
+.hz-cat {{
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .72rem;
+    color: {c['ink_mute']};
+    letter-spacing: .04em;
+}}
+.hz-cat__dot {{
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    flex: none;
+    display: inline-block;
+}}
+.hz-ecard__name {{
+    font-family: {f['serif']};
+    font-size: 1.12rem;
+    font-weight: 600;
+    color: {c['ink']};
+    line-height: 1.35;
+}}
+.hz-ecard__summary {{
+    font-size: .86rem;
+    color: {c['ink_soft']};
+    line-height: 1.6;
+    margin: 0;
+    flex: 1;
+}}
+.hz-ecard__meta {{
+    font-size: .74rem;
+    color: {c['ink_mute']};
+    border-top: 1px solid {c['line']};
+    padding-top: .45rem;
+    display: flex;
+    gap: .9rem;
+    flex-wrap: wrap;
+}}
+
+/* ===== 详情页头部 ===== */
+.hz-detail__eyebrow {{
+    font-size: .74rem;
+    letter-spacing: .16em;
+    color: {c['cinnabar']};
+    text-transform: uppercase;
+    margin-bottom: .3rem;
+}}
+.hz-detail__title {{
+    font-family: {f['serif']};
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: {c['ink']};
+    line-height: 1.2;
+    margin: 0 0 .4rem 0;
+    letter-spacing: .02em;
+}}
+.hz-detail__summary {{
+    font-size: .98rem;
+    color: {c['ink_soft']};
+    line-height: 1.75;
+    margin: 0 0 .7rem 0;
+    max-width: 46rem;
+}}
+.hz-alias {{ font-size: .8rem; color: {c['ink_mute']}; }}
+.hz-alias b {{ color: {c['stone']}; font-weight: 500; }}
+
+.hz-body {{
+    font-size: .93rem;
+    line-height: 1.95;
+    color: {c['ink_soft']};
+    white-space: pre-wrap;
+}}
+
+/* ===== 图片 + 署名 ===== */
+.hz-figure {{ margin: 0; }}
+.hz-figure img {{
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: {RADIUS['sm']};
+    border: 1px solid {c['line']};
+}}
+.hz-figure figcaption {{
+    font-size: .74rem;
+    color: {c['ink_mute']};
+    line-height: 1.65;
+    margin-top: .45rem;
+}}
+.hz-figure figcaption a {{ color: {c['stone']}; }}
+
+/* ===== 关联关系行 ===== */
+.hz-rel {{
+    display: flex;
+    gap: .6rem;
+    align-items: baseline;
+    padding: .45rem 0;
+    border-bottom: 1px solid {c['line']};
+    font-size: .88rem;
+}}
+.hz-rel:last-child {{ border-bottom: none; }}
+.hz-rel__dir {{
+    flex: none;
+    width: 1.5rem;
+    text-align: center;
+    color: {c['cinnabar']};
+    font-size: .8rem;
+}}
+.hz-rel__dir--in {{ color: {c['stone']}; }}
+.hz-rel__rel {{
+    flex: none;
+    min-width: 4.6rem;
+    color: {c['ink_mute']};
+    font-size: .78rem;
+    letter-spacing: .03em;
+}}
+.hz-rel__who {{ color: {c['ink']}; font-weight: 600; }}
+.hz-rel__desc {{
+    color: {c['ink_mute']};
+    font-size: .78rem;
+    line-height: 1.6;
+    display: block;
+    margin-top: .1rem;
+}}
+.hz-rel__src {{ color: {c['stone_light']}; font-size: .72rem; }}
+
+/* ===== 参考资料列表 ===== */
+.hz-src {{
+    display: flex;
+    gap: .6rem;
+    align-items: baseline;
+    padding: .5rem 0;
+    border-bottom: 1px solid {c['line']};
+    font-size: .86rem;
+}}
+.hz-src:last-child {{ border-bottom: none; }}
+.hz-src__idx {{
+    flex: none;
+    min-width: 1.35rem;
+    height: 1.35rem;
+    line-height: 1.35rem;
+    text-align: center;
+    border-radius: 4px;
+    background: {c['cinnabar']};
+    color: {c['on_accent']};
+    font-size: .72rem;
+    font-weight: 600;
+}}
+.hz-src__title {{ color: {c['ink']}; }}
+.hz-src__meta {{ color: {c['ink_mute']}; font-size: .78rem; display: block; }}
+.hz-src a {{ color: {c['stone_dark']}; text-decoration: none; border-bottom: 1px solid {c['line_strong']}; }}
+.hz-src a:hover {{ color: {c['cinnabar']}; border-color: {c['cinnabar']}; }}
+
+/* ===== 结果计数 / 分组标题 ===== */
+.hz-count {{
+    font-size: .84rem;
+    color: {c['ink_mute']};
+    padding: .1rem 0 .6rem 0;
+}}
+.hz-group-title {{
+    font-size: .82rem;
+    letter-spacing: .08em;
+    color: {c['stone']};
+    text-transform: uppercase;
+    margin: .9rem 0 .3rem 0;
+}}
 
 /* 页脚 */
 .hz-footer {{
