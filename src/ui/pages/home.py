@@ -17,39 +17,42 @@ from src.data.repository import Repository
 from src.graph import analysis as ga
 from src.graph import runtime as graph_runtime
 from src.ui import components as ui
-from src.ui import datastore, nav
+from src.ui import nav
 
-#: 首页主视觉选用的实体图片（取自 assets/images/manifest.json，可核查、已署名）
-#: 选「徽派建筑」：粉墙黛瓦是徽州最具辨识度的视觉符号，与平台的文化主题最贴合。
-HERO_IMAGE_ENTITY = "huipai_architecture"
+#: 首页主视觉：一张超宽幅徽州全景图（黟县宏村南湖）。
+#:
+#: **为什么不放进 ``assets/images/manifest.json``**：那份清单收录的是来自
+#: Wikimedia Commons 的**自由授权**图片，每一条都必须能追到作者、许可与来源页面
+#: （见 ``assets/images/README.md``）。本图是项目自备素材、未标注授权，
+#: 因此单独作为主视觉放在同一目录，**不混进清单**——宁可少一条署名，也不伪造一条署名。
+HERO_IMAGE_FILE = "hero_hongcun_nanhu.jpg"
+
+#: 主视觉图注：只描述画面内容，不代替来源声明。
+HERO_IMAGE_CAPTION = "徽州古村落 · 黟县宏村南湖：粉墙黛瓦与远山云影倒映湖面"
+
+#: 主视觉来源声明：如实写明这张图不在 Commons 署名清单内。
+HERO_IMAGE_NOTE = "首页主视觉为项目自备素材，未纳入 Commons 署名清单（来源未标注授权）。"
 
 
 def _render_hero_image() -> None:
-    """首页主视觉：一张已署名的徽州代表图片。
+    """首页主视觉：一张超宽幅徽州全景图（黟县宏村南湖）。
 
-    图片来自与详情页相同的图片库，因此同样带作者、许可与来源页面，可点击核对；
-    没有图片（或图片清单缺失）时**整块不渲染**，页面照常工作，不以占位图充数。
+    用**通栏**而非三列居中：这张图宽高比接近 4.8:1，通栏才能完整铺开，
+    缩进中间列反而又小又扁。若将来换成常规画幅的图，改回三列居中更合适。
+
+    图片文件缺失时**整块不渲染**——页面照常工作，不以占位图充数；
+    正因为它会静默消失，``tests/test_smoke.py`` 专门钉住了「文件必须存在」。
     """
-    image = datastore.images().get(HERO_IMAGE_ENTITY)
-    if image is None or not image.exists:
+    path = config.BASE_DIR / "assets" / "images" / HERO_IMAGE_FILE
+    if not path.is_file():
         return
-
-    _, mid, _ = st.columns([1, 4, 1], gap="medium")
-    with mid:
-        try:
-            st.image(str(image.path), use_container_width=True)
-        except Exception as exc:  # noqa: BLE001 - 图片损坏不应让整页崩溃
-            ui.render_error("首页图片无法显示", f"本地图片读取失败：{exc}")
-            return
-        ui.render(
-            ui.figure_caption(
-                caption=image.caption,
-                credit=image.credit,
-                source_url=image.source_url,
-                license_url=image.license_url,
-            )
-        )
-    st.caption("图片为自由授权作品，署名与许可见图注；完整清单见 assets/images/CREDITS.md。")
+    try:
+        st.image(str(path), use_container_width=True)
+    except Exception as exc:  # noqa: BLE001 - 图片损坏不应让整页崩溃
+        ui.render_error("首页图片无法显示", f"本地图片读取失败：{exc}")
+        return
+    ui.render(ui.figure_caption(caption=HERO_IMAGE_CAPTION, credit=""))
+    st.caption(HERO_IMAGE_NOTE)
 
 
 def _render_backend() -> None:

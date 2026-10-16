@@ -1,6 +1,6 @@
 # 图片署名清单
 
-本项目在界面中使用的徽州文化图片全部来自 **Wikimedia Commons**，
+本项目在界面中使用的徽州文化图片，**除首页主视觉之外**全部来自 **Wikimedia Commons**，
 且均为自由授权（CC0 / CC BY / CC BY-SA / 公有领域 / GFDL）。
 下表逐条登记来源，可点击核对原始页面。
 
@@ -27,6 +27,25 @@
 | 许村（`xucun`） | `xucun.jpg` | Siyuwj | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | [Commons](https://commons.wikimedia.org/wiki/File:Xucun_Village%2C_2021-09-26_01.jpg) |
 | 许国石坊（`xuguo_shifang`） | `xuguo_shifang.jpg` | Yumeto | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | [Commons](https://commons.wikimedia.org/wiki/File:20230904_Xuguo_Shifang.jpg) |
 | 渔梁（`yuliang`） | `yuliang.jpg` | Zhangzhugang | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) | [Commons](https://commons.wikimedia.org/wiki/File:Shexian_Yuliang_2016.11.13_07-46-43.jpg) |
+
+## 首页主视觉（项目自备素材，不列入上表）
+
+| 使用位置 | 文件 | 作者 | 许可 | 来源页面 |
+|---|---|---|---|---|
+| 首页「文化探索」主视觉 | `hero_hongcun_nanhu.jpg` | 项目自备素材 | 未标注 | 未标注 |
+
+这张图（黟县宏村南湖全景）是**项目自备素材**，没有可追溯的作者与许可信息，
+因此**刻意不列入上表**：上表每一条都要求能在 Commons 上核对到作者与许可，
+把一张来源不明的图混进去，等于伪造一条署名。
+
+界面上的呈现与此保持一致——图注下方会如实注明「首页主视觉为项目自备素材，
+未纳入 Commons 署名清单（来源未标注授权）」，**不会**把它说成自由授权作品。
+`tests/test_smoke.py` 也钉住了这两件事：文件必须在、且首页不得出现
+「图片为自由授权作品」这类与事实不符的说法。
+
+> 要让这张图也变得可核查：查到它确切的作者 / 许可 / 来源页面后，
+> 写进 `manifest.json` 与上表；或者改 `src/ui/pages/home.py` 的 `HERO_IMAGE_FILE`
+> 指向另一张图片。
 
 ## 未取得图片的实体
 

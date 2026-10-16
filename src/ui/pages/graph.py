@@ -228,7 +228,8 @@ def _render_canvas(
     )
     st.caption(
         f"{scope}：展示 {display.number_of_nodes()} 个实体、{display.number_of_edges()} 条关系。"
-        "可拖拽平移、滚轮缩放、悬停查看简介；点击节点会高亮其直接邻居并淡化其余节点。"
+        "可拖拽平移、滚轮缩放、点击节点高亮其直接邻居并淡化其余节点"
+        "（把鼠标停在节点上不会弹出浮层；关系的说明可在下方关系明细中查看）。"
     )
 
     if len(shards) == 1:

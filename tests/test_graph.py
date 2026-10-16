@@ -436,6 +436,10 @@ def test_network_html_payload_contains_exact_data(graph: nx.MultiDiGraph, datase
         assert node["label"], "节点必须有标签"
         assert node["color"]["background"].startswith("#")
         assert "degree" in node
+        # 节点**刻意不带**悬停说明：鼠标停在节点上不应弹出任何浮层。
+        # 浮层会跟着光标遮挡画布、打断顺着连线看关系；节点的信息在页面下方
+        # 的实体清单与详情页里都有入口。（关系的悬停说明见下面的断言。）
+        assert "title" not in node, f"节点不应带悬停说明：{node['id']}"
 
     for edge in edges:
         assert edge["from"] in node_ids and edge["to"] in node_ids

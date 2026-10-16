@@ -124,28 +124,6 @@ def truncate_label(name: str, limit: int = LABEL_MAX) -> str:
     return name if len(name) <= limit else name[: limit - 1] + "…"
 
 
-def _node_tooltip(graph: nx.MultiDiGraph, node_id: str) -> str:
-    data = graph.nodes[node_id]
-    aliases = data.get("aliases") or ()
-    lines: List[str] = [
-        f'<div style="font-weight:600;font-size:13px;">{_esc(data.get("name", node_id))}</div>',
-        f'<div style="color:#8C867A;font-size:11px;">{_esc(data.get("category_name", ""))}</div>',
-    ]
-    if aliases:
-        lines.append(
-            f'<div style="color:#8C867A;font-size:11px;">'
-            f'别名：{_esc("、".join(aliases))}</div>'
-        )
-    summary = data.get("summary", "")
-    if summary:
-        lines.append(f'<div style="font-size:12px;margin-top:4px;max-width:280px;">{_esc(summary)}</div>')
-    lines.append(
-        f'<div style="color:#B23A2F;font-size:11px;margin-top:4px;">'
-        f'关联 {graph.degree(node_id)} 条　·　来源 {data.get("source_count", 0)} 项</div>'
-    )
-    return "".join(lines)
-
-
 def _edge_tooltip(data: Mapping[str, object]) -> str:
     lines = [
         f'<div style="font-weight:600;font-size:12px;">{_esc(data.get("type_name", ""))}'
@@ -267,6 +245,10 @@ def build_network_html(
         show_edge_labels: 是否常显关系标签（关系较多时建议关闭）。
         highlight_neighbors: 点击节点时是否高亮其邻居并淡化其余节点。
 
+    Notes:
+        **节点不带悬停说明**：鼠标移到节点上不会弹出任何浮层，
+        以免浮层跟随光标遮挡画布、打断查看关系。关系（边）仍保留悬停说明。
+
     Raises:
         EmptyGraphError: 图中没有任何节点。
         GraphError: 生成结果仍依赖外部资源。
@@ -292,10 +274,13 @@ def build_network_html(
         palette = CATEGORY_COLORS.get(str(data.get("category", "")), FALLBACK_COLOR)
         is_focus = node_id == focus
         degree = graph.degree(node_id)
+        # 节点**刻意不设** ``title``：vis-network 有 title 就会在鼠标悬停时弹出浮层，
+        # 浮层会随光标移动遮挡画布、打断「顺着连线看关系」这件事，
+        # 而节点要看的信息在页面下方的实体清单与详情页里都有。
+        # 关系的悬停说明（``_edge_tooltip``）保留——关系没有别的入口可看。
         net.add_node(
             node_id,
             label=truncate_label(str(data.get("name", node_id))),
-            title=_node_tooltip(graph, node_id),
             size=node_size(degree, top_degree) * (1.35 if is_focus else 1.0),
             color={
                 "background": palette["bg"],

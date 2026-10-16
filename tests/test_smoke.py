@@ -55,8 +55,14 @@ def test_default_page_renders_navigation(app: AppTest) -> None:
 
 
 def _body(app: AppTest) -> str:
-    """把一次运行产生的所有 markdown 文本拼起来，便于断言。"""
-    return " ".join(m.value for m in app.markdown)
+    """把一次运行产生的所有文本拼起来，便于断言。
+
+    同时收集 ``markdown`` 与 ``caption``：页面上不少说明是用 ``st.caption``
+    写的（图注来源声明、连通性结论等），只拼 markdown 会漏掉它们。
+    """
+    parts = [m.value for m in app.markdown]
+    parts.extend(c.value for c in app.caption)
+    return " ".join(parts)
 
 
 # --------------------------------------------------------------------------
@@ -64,32 +70,38 @@ def _body(app: AppTest) -> str:
 # --------------------------------------------------------------------------
 
 
-def test_home_shows_a_credited_hero_image(app: AppTest) -> None:
-    """首页要有徽州代表图片作主视觉，并且图注与作者署名必须一起出现。"""
+def test_home_shows_the_hero_image(app: AppTest) -> None:
+    """首页要有徽州全景主视觉，图注与来源声明必须一起出现。"""
     app.run()
     assert not app.exception, f"首页抛出异常：{app.exception}"
     assert len(app.image) == 1, "首页应恰好展示一张主视觉图片"
 
-    image = datastore.images().get(home.HERO_IMAGE_ENTITY)
-    assert image is not None, f"图片库缺少 {home.HERO_IMAGE_ENTITY}"
     body = _body(app)
-    assert image.caption in body, "首页主视觉必须带图注"
-    assert image.artist in body, "首页主视觉必须带作者署名（授权要求）"
+    assert home.HERO_IMAGE_CAPTION in body, "首页主视觉必须带图注"
+    assert home.HERO_IMAGE_NOTE in body, "首页主视觉必须如实注明来源（自备素材，未标注授权）"
 
 
-def test_home_hero_image_entity_is_a_real_credited_image() -> None:
-    """主视觉引用的实体必须真在图片库中、文件存在且有可核查来源。
+def test_home_hero_image_is_a_local_asset_and_kept_out_of_the_manifest(app: AppTest) -> None:
+    """主视觉文件必须真在磁盘上，且**不混进** Commons 署名清单。
 
-    配错实体名时首页会**静默**少了主视觉（页面照常、不报错），
-    只有这样的断言才拦得住。
+    两件事都要钉：
+
+    1. 文件缺失时首页会**静默**少一张图（页面照常、不报错），只有断言拦得住；
+    2. 清单里的每一条都必须是可核查署名的 Commons 自由授权图。这张是项目自备素材、
+       没有署名信息，混进清单等于伪造一条署名——宁可让它留在清单外并如实声明。
     """
-    image = datastore.images().get(home.HERO_IMAGE_ENTITY)
-    assert image is not None, f"图片库中没有 {home.HERO_IMAGE_ENTITY}，首页将无主视觉"
-    assert image.exists, f"{home.HERO_IMAGE_ENTITY} 的图片文件缺失：{image.path}"
-    assert image.artist.strip(), "首页主视觉缺作者，按本项目规则不予收录"
-    assert image.source_url.startswith("https://commons.wikimedia.org/"), (
-        f"首页主视觉的来源页面不是 Commons：{image.source_url}"
+    path = config.BASE_DIR / "assets" / "images" / home.HERO_IMAGE_FILE
+    assert path.is_file(), f"首页主视觉文件缺失：{path}"
+    assert path.stat().st_size > 1024, f"首页主视觉文件过小，可能已损坏：{path}"
+
+    manifest_files = {image.path.name for image in datastore.images().all()}
+    assert home.HERO_IMAGE_FILE not in manifest_files, (
+        "首页主视觉是自备素材，不应出现在 Commons 署名清单里"
     )
+
+    app.run()
+    for claim in ("图片为自由授权作品", "署名与许可见图注"):
+        assert claim not in _body(app), f"首页不应把自备主视觉说成「{claim}」"
 
 
 def test_environment_check_lives_on_about_page_not_home(app: AppTest) -> None:
