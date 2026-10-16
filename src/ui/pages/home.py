@@ -12,6 +12,8 @@ from typing import List, Tuple
 import streamlit as st
 
 from src import __version__, config
+from src.data.loader import DataError, dataset_summary, load_dataset
+from src.data.repository import Repository
 from src.ui import components as ui
 
 
@@ -151,6 +153,53 @@ def _render_backend() -> None:
         )
 
 
+def _render_data_overview() -> None:
+    """数据概况：全部数值来自真实加载的数据集，加载失败时显示错误状态。"""
+    ui.render_section("文化数据概况", "以下统计由程序读取 data/*.json 实时计算得出。")
+
+    try:
+        dataset = load_dataset()
+    except DataError as exc:
+        ui.render_error("文化数据加载失败", str(exc).splitlines()[0])
+        with st.expander("查看详细错误"):
+            st.code(str(exc))
+        return
+
+    repo = Repository(dataset)
+    summary = dataset_summary(dataset)
+
+    cols = st.columns(5, gap="medium")
+    for col, (label, key) in zip(
+        cols,
+        [("文化实体", "entities"), ("实体关系", "relations"),
+         ("参考资料", "sources"), ("内容分类", "categories"),
+         ("关系类型", "relation_types")],
+    ):
+        col.metric(label, summary[key])
+
+    rows = []
+    for cc in repo.category_counts():
+        if cc.count == 0:
+            continue
+        rows.append(
+            ui.kv_row(
+                cc.category.name,
+                f'<strong>{cc.count}</strong> 个实体　'
+                f'<span style="color:#8C867A;">{ui.esc(cc.category.description)}</span>',
+            )
+        )
+    ui.render(ui.card_html("分类分布", "".join(rows)))
+
+    isolated = repo.stats()["isolated_entities"]
+    if isolated:
+        ui.render_error(
+            f"存在 {len(isolated)} 个孤立实体",
+            "这些实体没有任何关系，图谱中会显示为游离节点，建议补充关系。",
+        )
+    else:
+        st.caption(f"图谱连通性检查通过：全部 {summary['entities']} 个实体均至少有一条关系。")
+
+
 def _render_runtime() -> None:
     rows = [
         ui.kv_row("应用版本", f"v{ui.esc(__version__)}"),
@@ -172,6 +221,8 @@ def render() -> None:
         )
     )
 
+    _render_data_overview()
+
     cols = st.columns([3, 2], gap="large")
     with cols[0]:
         _render_backend()
@@ -180,9 +231,10 @@ def render() -> None:
 
     _render_checklist()
 
-    st.warning(
-        "当前为 P0 脚手架阶段：文化数据、知识图谱与问答链路尚未接入，"
-        "上方「待开发」状态即为真实进度。后续每个阶段都会在界面与测试中体现实际完成度。"
+    st.info(
+        "当前进度：**P1 数据层已完成**——90 个文化实体、150 条实体关系、28 条可核查来源已完成整理、"
+        "校验与测试固化。知识图谱（P2）、浏览体验（P3）、AI 问答（P4）、智能体工作流（P5）尚在开发中，"
+        "上方「待开发」状态即为真实进度。"
     )
 
 

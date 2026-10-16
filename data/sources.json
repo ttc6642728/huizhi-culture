@@ -1,0 +1,259 @@
+{
+  "version": "1.0",
+  "updated": "2026-10-16",
+  "note": "本文件登记全部文化事实的来源。source_ids 在手写与程序校验中均须指向本文件存在的 id。权威性优先级：UNESCO 世界遗产中心 > 国家级政府机构 > 地方人民政府/官方媒体 > 学术文献 > 百科（仅作补充）。",
+  "sources": [
+    {
+      "id": "src_unesco_1002",
+      "type": "unesco",
+      "title": "Ancient Villages in Southern Anhui – Xidi and Hongcun（皖南古村落—西递、宏村）",
+      "publisher": "UNESCO World Heritage Centre",
+      "url": "https://whc.unesco.org/en/list/1002/",
+      "accessed": "2026-10-16",
+      "note": "世界遗产名录编号 1002，2000 年列入，遴选标准 (iii)(iv)(v)。遗产地总面积 730 公顷（西递 400 公顷含缓冲区，宏村 330 公顷）。"
+    },
+    {
+      "id": "src_unesco_547",
+      "type": "unesco",
+      "title": "Mount Huangshan（黄山）",
+      "publisher": "UNESCO World Heritage Centre",
+      "url": "https://whc.unesco.org/en/list/547/",
+      "accessed": "2026-10-16",
+      "note": "世界遗产名录编号 547，1990 年列入，世界文化与自然双重遗产，遴选标准 (ii)(vii)(x)。核心区 16,060 公顷（160.6 平方公里），缓冲区 49,000 公顷（490 平方公里）。"
+    },
+    {
+      "id": "src_gov_hs_ich",
+      "type": "government",
+      "title": "黄山市市级以上非物质文化遗产代表性项目名录",
+      "publisher": "黄山市人民政府办公室（来源：黄山市文化和旅游局），2025-11-06",
+      "url": "https://www.huangshan.gov.cn/zwgk/public/6615714/11930045.html",
+      "accessed": "2026-10-16",
+      "note": "权威名录。载明黄山市国家级代表性项目 24 项、省级代表性项目 78 项，逐项标注项目类别、申报地区与公布年份。本项目非遗类实体的名称、批次年份与申报地区均以此为准。"
+    },
+    {
+      "id": "src_gov_hs_arch",
+      "type": "government",
+      "title": "徽派建筑的历史",
+      "publisher": "黄山市人民政府 · 人文徽州",
+      "url": "https://www.huangshan.gov.cn/zjhs/rwhz/hpjz/8294054.html",
+      "accessed": "2026-10-16",
+      "note": "徽派建筑、祠堂、牌坊形制与实例（龙川胡氏宗祠、黟县敬爱堂、棠樾清懿堂、许国石坊、胡文光刺史坊）的官方说明。"
+    },
+    {
+      "id": "src_gov_hs_people",
+      "type": "government",
+      "title": "徽州名人",
+      "publisher": "黄山市人民政府 · 人文徽州",
+      "url": "https://www.huangshan.gov.cn/zjhs/rwhz/hzmr/8295585.html",
+      "accessed": "2026-10-16",
+      "note": "载 1999 年底黄山市“千年徽州杰出历史人物评选”前十位名单及毕昇、方腊、朱熹等人物条目。"
+    },
+    {
+      "id": "src_gov_hs_route",
+      "type": "government",
+      "title": "跟着线路打卡，解锁黄山的文物魅力！",
+      "publisher": "黄山市文化和旅游局",
+      "url": "https://wlj.huangshan.gov.cn/site/tpl/6468?contentId=9130584",
+      "accessed": "2026-10-16",
+      "note": "文物主题游径。载黄山登山古道及古建筑、黄山摩崖石刻群、西递古建筑群、宏村古建筑群的全国重点文物保护单位信息，以及西递始建年代与现存古民居数量。"
+    },
+    {
+      "id": "src_gov_hs_food_ten",
+      "type": "government",
+      "title": "徽菜行天下——屯溪篇",
+      "publisher": "黄山市人民政府",
+      "url": "https://www.huangshan.gov.cn/zwgk/public/6615714/11221456.html",
+      "accessed": "2026-10-16",
+      "note": "徽州臭鳜鱼、徽州刀板香、石耳炖土鸡、黄山一绝（火腿炒蕨菜）、黄山石耳豆腐丸等菜品渊源与做法。"
+    },
+    {
+      "id": "src_gov_hs_food_new",
+      "type": "government",
+      "title": "“新徽菜·名徽厨” 绘就舌尖上的徽州之美",
+      "publisher": "黄山市人民政府",
+      "url": "https://www.huangshan.gov.cn/zwgk/public/6615714/11004035.html",
+      "accessed": "2026-10-16",
+      "note": "载徽菜烹饪技艺获评第五批国家级非物质文化遗产代表性项目，及黄山市徽菜产业规模。"
+    },
+    {
+      "id": "src_gov_hs_wh35",
+      "type": "government",
+      "title": "迈向下一个35年：以系统韧性守护人类瑰宝——纪念黄山申遗成功35周年",
+      "publisher": "黄山市人民政府",
+      "url": "https://www.huangshan.gov.cn/zxzx/bmdt/8417845.html",
+      "accessed": "2026-10-16",
+      "note": "载明黄山于 1990 年 12 月 12 日在联合国教科文组织世界遗产委员会第十四届会议上列入《世界遗产名录》，为世界文化与自然混合遗产，并同时拥有世界地质公园、世界生物圈保护区头衔。"
+    },
+    {
+      "id": "src_gov_hs_wh30",
+      "type": "government",
+      "title": "黄山申遗30周年纪念活动主题在线访谈（黄山风景区党工委委员刘一举）",
+      "publisher": "黄山风景区管理委员会",
+      "url": "https://hsgwh.huangshan.gov.cn/zwgk/public/6617641/8881616.html",
+      "accessed": "2026-10-16",
+      "note": "载黄山于 1990 年 12 月列入世界遗产名录、属世界文化与自然双重遗产、遗产地规划面积 160.6 平方公里、千米以上高峰 88 座、最高峰莲花峰海拔 1864.8 米。"
+    },
+    {
+      "id": "src_gov_hs_three",
+      "type": "government",
+      "title": "关于《黄山风景区三大名录遗产协同管理工作机制（试行）》的解读",
+      "publisher": "黄山风景区管理委员会",
+      "url": "https://hsgwh.huangshan.gov.cn/zwgk/public/6617641/10826570.html",
+      "accessed": "2026-10-16",
+      "note": "载黄山三大名录遗产（世界遗产、世界地质公园、世界生物圈保护区）的面积与加入时间。"
+    },
+    {
+      "id": "src_gov_hs_summit",
+      "type": "government",
+      "title": "山城相拥处 世界正相逢",
+      "publisher": "黄山市人民政府",
+      "url": "https://www.huangshan.gov.cn/zxzx/zwyw/8421340.html",
+      "accessed": "2026-10-16",
+      "note": "载徽商“贾而好儒，足迹遍天下”的历史贸易范围，及歙县非遗“鱼灯”等当代传承实践。"
+    },
+    {
+      "id": "src_ihchina_food",
+      "type": "government",
+      "title": "徽菜烹饪技艺（项目序号 1516，项目编号 Ⅷ-270）",
+      "publisher": "中国非物质文化遗产网 · 中国非物质文化遗产数字博物馆",
+      "url": "https://www.ihchina.cn/project_details/23584/",
+      "accessed": "2026-10-16",
+      "note": "载徽菜烹饪技艺 2021 年公布（第五批）、类别传统技艺、申报地区安徽省、保护单位安徽省文化馆；并载徽菜发源于古徽州一府六县、技法擅长烧炖蒸、喜用火腿佐味冰糖提鲜，以及《徽州府志》所记“沙地马蹄鳖，雪天牛尾狸”典出。"
+    },
+    {
+      "id": "src_ihchina_b1",
+      "type": "government",
+      "title": "国务院关于公布第一批国家级非物质文化遗产名录的通知（国发〔2006〕18号）",
+      "publisher": "中国非物质文化遗产网",
+      "url": "https://www.ihchina.cn/zhengce_details/11546",
+      "accessed": "2026-10-16",
+      "note": "第一批国家级非物质文化遗产名录（共 518 项）。其中徽剧（编号 Ⅳ—29）申报地区为安徽省、黄山市、江西省婺源县。"
+    },
+    {
+      "id": "src_ihchina_b3",
+      "type": "government",
+      "title": "国务院关于公布第三批国家级非物质文化遗产名录的通知（国发〔2011〕14号）",
+      "publisher": "中国非物质文化遗产网",
+      "url": "https://www.ihchina.cn/zhengce_details/11663",
+      "accessed": "2026-10-16",
+      "note": "第三批国家级非物质文化遗产名录（共 191 项）。"
+    },
+    {
+      "id": "src_mct_b1",
+      "type": "government",
+      "title": "国务院关于公布第一批国家级非物质文化遗产名录的通知",
+      "publisher": "中华人民共和国文化和旅游部",
+      "url": "https://www.mct.gov.cn/whzx/bnsj/fwzwhycs/201111/t20111128_765124.html",
+      "accessed": "2026-10-16",
+      "note": "第一批国家级非物质文化遗产名录全文（文旅部官方发布）。"
+    },
+    {
+      "id": "src_gmw_village",
+      "type": "official_media",
+      "title": "“活”的皖南古村落",
+      "publisher": "光明网（转载《光明日报》2023年04月23日11版）",
+      "url": "https://news.gmw.cn/2023-04/23/content_36514216.htm",
+      "accessed": "2026-10-16",
+      "note": "载 2000 年 11 月联合国教科文组织第 24 届世界遗产委员会会议决定将“中国皖南古村落——西递、宏村”列入世界文化遗产名录；古村落选址遵循天人合一理念；宏村承志堂约建于 1855 年前后。"
+    },
+    {
+      "id": "src_xinhua_wh",
+      "type": "official_media",
+      "title": "新华全媒+｜我是世界遗产守护人——古村之中守徽韵悠长",
+      "publisher": "新华网",
+      "url": "https://xinhuanet.com.cn/culture/20241225/f8eb9b2bb7774bacaa52f4eccea5132c/c.html",
+      "accessed": "2026-10-16",
+      "note": "载西递敬爱堂始建于明万历年间、是西递村中最大的祠堂、占地面积超过 1700 平方米；宏村建筑以砖木结构为主，防火为首要任务。"
+    },
+    {
+      "id": "src_gov_sc_hs",
+      "type": "government",
+      "title": "【社科普及】古韵黄山 诗意徽州",
+      "publisher": "舒城县人民政府",
+      "url": "https://www.shucheng.gov.cn/public/6617911/37916155.html",
+      "accessed": "2026-10-16",
+      "note": "载黄山风景区“奇松、怪石、云海、温泉”四绝；西递有“桃花源里人家”之誉；宏村牛形布局（月沼如牛胃、南湖似牛肚、村外四座木桥为牛腿）；屯溪老街被誉为“活动着的清明上河图”；徽州臭鳜鱼、徽府一品锅、徽州毛豆腐的做法与特色。"
+    },
+    {
+      "id": "src_xuexi_food",
+      "type": "official_media",
+      "title": "徽菜：山水人文中的味觉坐标",
+      "publisher": "学习强国",
+      "url": "https://article.xuexi.cn/articles/index.html?art_id=16593591477348429471",
+      "accessed": "2026-10-16",
+      "note": "载徽菜为中国八大菜系之一，起源于秦汉、兴于唐宋、盛于明清，特点为重油重色、重火功重食补；绩溪县为“中国徽菜之乡”并举办国际徽菜饮食文化节；“胡适一品锅”名称由来与梁实秋记述。"
+    },
+    {
+      "id": "src_xuexi_hz",
+      "type": "official_media",
+      "title": "千年千古韵 一梦一徽州",
+      "publisher": "学习强国",
+      "url": "https://article.xuexi.cn/articles/picture/index.html?art_id=9335383973263605595",
+      "accessed": "2026-10-16",
+      "note": "载徽州古称歙州、新安，一府六县；徽派建筑“古建三绝”为民居、祠堂、牌坊；徽雕四绝为砖雕、石雕、木雕、竹雕，产生于宋代、盛行于明清。"
+    },
+    {
+      "id": "src_people_hz",
+      "type": "official_media",
+      "title": "从当代画家的“写·景”看徽乡古村的人文自然之美",
+      "publisher": "人民日报客户端",
+      "url": "https://www.peopleapp.com/rmharticle/30012785206",
+      "accessed": "2026-10-16",
+      "note": "载徽州一府六县的具体范围：今安徽省黄山市的歙县、黟县、休宁、祁门，今安徽省宣城市的绩溪县和今属江西省上饶市的婺源县；并载“新安画派”“黄山画派”与汤显祖诗句。"
+    },
+    {
+      "id": "src_beijingreview",
+      "type": "academic",
+      "title": "世界文化与自然遗产——黄山",
+      "publisher": "北京周报",
+      "url": "http://www.beijingreview.cn//zhuanti/2008-05/30/content_124087.htm",
+      "accessed": "2026-10-16",
+      "note": "载徽州得名两说、清康熙六年（1667 年）建省取安庆府与徽州府首字为省名；徽州文化为我国三大区域文化（藏学、敦煌学、徽学）之一；明清两代徽州中进士 542 人、举人 1513 人；“无徽不成镇”；并列出毕昇、朱熹、许国、曹振镛、鲍漱芳、汪道昆、汪机、汪昂、渐江、黄宾虹、戴震、王茂荫、程大位、陶行知、胡适、张曙、詹天佑、郑复光、徐谦等徽州籍人物。"
+    },
+    {
+      "id": "src_gzszx_hz",
+      "type": "government",
+      "title": "徽州印象",
+      "publisher": "中国人民政治协商会议贵州省委员会",
+      "url": "https://gzszx.gov.cn/gzzxb/web/doc/detail/d_1299441451535104",
+      "accessed": "2026-10-16",
+      "note": "载徽州文风鼎盛、人才辈出，列出许国、汪道昆、曹振镛、朱熹、程大位、渐江、戴震、詹天佑、黄宾虹、胡适、陶行知等徽州籍人物。"
+    },
+    {
+      "id": "src_ahlgbj",
+      "type": "government",
+      "title": "美在于发现 在于创造 在于传扬——论安徽文化整体实力与竞争力",
+      "publisher": "中共安徽省委老干部局（作者：安徽省文化厅 张光亚）",
+      "url": "https://www.ahlgbj.gov.cn/col19/15071",
+      "accessed": "2026-10-16",
+      "note": "载徽商“官、贾、儒”三位一体，培植出新安理学、新安医学、新安画派、徽派盆景、徽墨歙砚、徽派建筑、徽雕（砖、石、木三雕）、徽刻、徽菜等文化流派。"
+    },
+    {
+      "id": "src_wenming_sx",
+      "type": "official_media",
+      "title": "黄山市歙县：味道小城看建筑",
+      "publisher": "中国文明网",
+      "url": "http://images1.wenming.cn/web_gz/china_Towns/Towns_fengcai/201312/t20131210_1629713.shtml",
+      "accessed": "2026-10-16",
+      "note": "载许国石坊为国内罕见的明代大型石牌坊、全国现存唯一一座八脚牌楼、全国重点文物保护单位，坊上题字出自许国门生董其昌；歙县有“牌坊之乡”美称，明清时期建造石坊达 250 多座；棠樾牌坊群七座（明代三座、清代四座）；新安江山水画廊在歙县境内全长约百里。"
+    },
+    {
+      "id": "src_wenming_tangyue",
+      "type": "government",
+      "title": "徽州古城与棠樾牌坊群（歙县文化旅游资料汇编）",
+      "publisher": "歙县人民政府（徽州古城景区）",
+      "url": "https://www.ahshexian.gov.cn/",
+      "accessed": "2026-10-16",
+      "note": "补充来源：歙县为徽州府治所在、国家历史文化名城；许国石坊立于明万历十二年（1584 年）；棠樾牌坊群与其周边鲍氏祠堂、鲍家花园共同构成徽州古建三绝的综合载体。"
+    },
+    {
+      "id": "src_ency_baike",
+      "type": "encyclopedia",
+      "title": "稠墅牌坊群 / 棠樾牌坊群（百科条目）",
+      "publisher": "百度百科",
+      "url": "https://baike.baidu.com/item/%E7%A8%A0%E5%A2%85%E7%89%8C%E5%9D%8A%E7%BE%A4",
+      "accessed": "2026-10-16",
+      "note": "仅作补充参考：载许国石坊立于明万历十二年十月（公元 1584 年），1988 年 1 月 13 日列入第三批全国重点文物保护单位；棠樾牌坊群七座（明三清四），1996 年升格为第四批全国重点文物保护单位，乾隆曾褒奖该村为“慈孝天下无双里，衮绣江南第一乡”。权威性低于官方来源，仅在官方来源未覆盖时使用。"
+    }
+  ]
+}

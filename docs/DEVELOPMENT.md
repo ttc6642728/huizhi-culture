@@ -97,7 +97,35 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 ---
 
-## 四、界面设计系统
+## 四、数据模型
+
+```
+data/entities.json
+  ├─ categories[]  { id, name, order, description }
+  └─ entities[]    { id, name, category, aliases[], summary, description,
+                     attributes{}, source_ids[], image? }
+
+data/relations.json
+  ├─ relation_types[] { id, name, inverse_name, description }
+  └─ relations[]      { id, source, target, type, label, description?, source_ids[] }
+
+data/sources.json
+  └─ sources[]  { id, type, title, publisher, url, accessed, note }
+```
+
+约定：
+
+- `entities.id`、`relations.id`、`sources.id` 全局唯一，采用小写英文与下划线。
+- 每条实体与每条关系**必须**带非空 `source_ids`，且引用的 id 必须在 `sources.json` 中存在。
+- 关系方向固定为 `source → target`；`relation_types[].inverse_name` 用于在界面上以当前实体为主语反向展示。
+- `attributes` 为字符串键值对，用于结构化展示；关键事实（年份、批次、数量）优先放进 `attributes` 以便测试断言。
+- 不做「孤立实体」：校验要求每个实体至少有一条关系。
+
+校验入口：`src/data/loader.py::validate_dataset`（11 类检查），CLI 为 `scripts/validate_data.py`。
+
+---
+
+## 五、界面设计系统
 
 | 令牌 | 值 | 用途 |
 |---|---|---|
@@ -115,7 +143,7 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 ---
 
-## 五、开发记录
+## 六、开发记录
 
 ### P0 脚手架与环境（已完成）
 
@@ -167,3 +195,67 @@ docs/DEVELOPMENT.md
 
 编写 `data/entities.json`、`relations.json`、`sources.json`（60–80 实体、8–10 分类、来源可核查），
 实现 `src/data/loader.py` 与 `repository.py`，配套 `scripts/validate_data.py` 与单元测试。
+
+### P1 数据层（已完成）
+
+**新增文件**
+
+```
+data/entities.json        文化实体库（90 个实体 / 11 个分类）
+data/relations.json       实体关系库（150 条关系 / 10 种关系类型）
+data/sources.json         参考资料来源库（28 条，含 URL 与访问日期）
+src/data/loader.py        数据模型、加载与 11 类校验
+src/data/repository.py    检索、筛选、详情、邻居、子图、路径、统计
+scripts/validate_data.py  数据校验 CLI
+tests/test_data_integrity.py   真实数据文件校验（14 项）
+tests/test_loader.py           加载与校验边界（20 项）
+tests/test_repository.py       查询能力（25 项）
+docs/DATA_SOURCES.md      数据来源与核实说明
+```
+
+**分类构成**
+
+| 分类 | 实体数 | 分类 | 实体数 |
+|---|---|---|---|
+| 古村落 | 10 | 民俗节庆 | 6 |
+| 徽派建筑 | 11 | 徽菜饮食 | 8 |
+| 非物质文化遗产 | 9 | 宗族与文教 | 7 |
+| 历史名人 | 14 | 文献典籍 | 4 |
+| 徽商 | 7 | 山川地域 | 5 |
+| 传统工艺与艺术 | 9 | | |
+
+**分类维度的两处调整（需确认）**
+
+1. **新增「山川地域」**：原定十类中无地理维度，但黄山、新安江是徽州文化不可分割的地理基底，故新增此类（5 个实体）。
+2. **两处命名微调**：「传统工艺」→「传统工艺与艺术」（以容纳新安画派）；「宗族与教育」→「宗族与文教」（以容纳新安理学、新安医学）。
+
+两处调整均为**在既定维度上的扩充**，不改变原有分类的覆盖范围。如需严格保持十类，可将「山川地域」并入「古村落」并将另两类改回原名。
+
+**数据来源策略**
+
+- 优先使用 UNESCO 世界遗产中心（A 级）、国务院/文化和旅游部/中国非物质文化遗产网（B 级）、地方政府与官方媒体（C 级）。
+- 百科类来源仅在 A–C 未覆盖时作补充，并在 `sources.json` 的 `note` 中标注其权威性较低。
+- 关键事实（世界遗产编号与年份、非遗批次与申报地区、牌坊数量、人物评选名次）已在测试中设断言，被误改会立即失败。
+- 无法核实的内容不写入数据集。详见 `docs/DATA_SOURCES.md`。
+
+**首页增强**
+
+`src/ui/pages/home.py` 新增「文化数据概况」板块：由程序实时读取数据集计算实体/关系/来源/分类数量与分类分布，
+并在数据加载失败时显示错误状态、存在孤立实体时显示告警。
+
+**验证**
+
+- `pytest`：72 项全部通过（P0 的 13 项 + P1 的 59 项）。
+- `python scripts/validate_data.py`：数据校验全部通过，无孤立实体。
+- `AppTest` 冒烟测试覆盖首页数据板块渲染，无异常。
+
+**遗留问题**
+
+- 图片素材尚未下载（计划在 P3 阶段处理）。
+- 90 个实体略高于原计划的 60–80，已确认图谱无孤立节点。
+
+**下一阶段（P2）**
+
+实现 `src/graph/builder.py`（NetworkX 建图）、`analysis.py`（中心度、连通分量、最短路径、整体统计）、
+`visualize.py`（PyVis 交互图，`cdn_resources="in_line"` 保证离线可用，支持聚焦与高亮），
+接入知识图谱页面，配套 `tests/test_graph.py`。
