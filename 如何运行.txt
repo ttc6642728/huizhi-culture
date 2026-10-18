@@ -1,0 +1,3 @@
+cd E:\huizhi-culture //（为项目文件夹地址）
+.venv\Scripts\activate
+streamlit run app.py
