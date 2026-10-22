@@ -1,11 +1,47 @@
 # 徽知 · Huizhou Culture Explorer
 
-> 徽州文化知识图谱与 AI 智能问答平台 —— 生成式 AI 与智能体开发课程设计项目
+![Python](https://img.shields.io/badge/Python-3.12%2B-2F6E7A)
+![pytest](https://img.shields.io/badge/pytest-437%20passed-3F6B4F)
+![offline](https://img.shields.io/badge/tests-no%20network-6B6357)
+![license](https://img.shields.io/badge/license-MIT-B23A2F)
+
+> 徽州文化知识图谱与 AI 智能问答平台（生成式 AI 与智能体开发实践）。把 96 个徽州文化实体
+> 整理成可查询、可核查的知识图谱，并让 AI 严格依据本地资料作答、逐句标注来源。
+
+<!-- 推送到 GitHub 后，可把上面第三行的静态徽章换成 CI 徽章（owner/repo 换成你的仓库）：
+     ![CI](https://github.com/<owner>/<repo>/actions/workflows/tests.yml/badge.svg) -->
 
 徽知把徽州文化整理成**结构化、可核查、可交互**的知识：你可以浏览文化实体、按关键词与分类检索、
 在交互式知识图谱中查看实体之间真实的数据关系，并基于资料向 AI 提问，获得**带来源引用**的回答。
 此外，平台还提供一条**可追踪的智能体工作流**——从问题解析、资料检索、依据资料作答，
 到引用自我核查与输出归档，六步全部留痕，失败时会明确指出停在哪一步。
+
+---
+
+## 界面预览
+
+![文化探索](docs/screenshots/home.jpg)
+
+*文化探索：徽州古村落主视觉、数据概况与分类构成，数字由 `data/*.json` 实时计算。*
+
+![文化百科](docs/screenshots/explore.jpg)
+
+*文化百科：按名称 / 别名 / 摘要 / 属性加权检索，11 个分类筛选，已有配图的实体默认排在前面。*
+
+![知识图谱](docs/screenshots/graph.jpg)
+
+*知识图谱：96 个节点、180 条边的 `MultiDiGraph`，可筛选、聚焦、点选高亮；节点上刻意不挂悬停浮层。*
+
+![AI 问答](docs/screenshots/ask.jpg)
+
+*AI 问答：回答中每个事实标注 `[n]`，下方「引用来源」只列出真正被引用到的资料，可点开核查原文。*
+
+![关于项目](docs/screenshots/about.jpg)
+
+*关于项目：可现场运行的六步工作流，以及在人工标注集上实跑出的检索 / 回答指标。*
+
+> 截图取自本机真实运行。AI 问答一张由 OpenAI 兼容后端（DeepSeek）作答；
+> 未配置 `.env` 时同一个问题由本地检索式后端回答，引用与来源结构一致——**不需要任何 API Key 也能完整使用**。
 
 ---
 
@@ -71,7 +107,7 @@ python scripts/validate_data.py
 | 图类型 | `MultiDiGraph`（同向平行边不会被合并） |
 | 连通分量 | 1（全部实体同属一个关联网络） |
 | 网络直径 | 6 |
-| 平均最短关联距离 | 2.939 |
+| 平均最短关联距离 | 2.826 |
 | 文化聚类 | 8 组（模块度优化，探索性分析） |
 
 「知识图谱」页提供：按分类 / 关系类型筛选、聚焦单个实体的关联子图（半径 1–3）、
@@ -90,7 +126,7 @@ python scripts/graph_report.py --path xidi chengzhitang
 python scripts/graph_report.py --export outputs/huizhou-knowledge-graph.html
 ```
 
-导出的 HTML 为单文件（约 830 KB），直接双击用浏览器打开即可拖拽、缩放与点选，
+导出的 HTML 为单文件（约 790 KB），直接双击用浏览器打开即可拖拽、缩放与点选，
 不依赖服务器与网络。
 
 ---
@@ -408,19 +444,24 @@ huizhi-culture/
 │                           fetch_images.py（自由授权图片抓取）、evaluate.py（质量评估）
 ├─ tests/                   自动化测试（16 个模块 / 390 项测试函数）
 │  └─ snapshots/            界面结构快照基线（结构回归用）
+├─ docs/                    README 中的截图、项目开发文档、架构决策、数据来源与测试报告
+│  └─ screenshots/          界面截图（README「界面预览」使用）
+├─ .github/workflows/       GitHub Actions：多版本 Python 上跑测试与数据校验
 ├─ outputs/                 导出的产物（已 gitignore）
-└─ docs/                    项目开发文档、架构决策、数据来源说明与测试报告
+└─ LICENSE                  MIT 许可（第三方图片与数据许可见文末说明）
 ```
 
 ## 文档导航
 
 | 文档 | 内容 |
 |---|---|
-| `README.md`（本文） | 项目简介、特性、运行方式 |
+| `README.md`（本文） | 项目简介、界面预览、特性、运行方式 |
 | **`docs/PROJECT_REPORT.md`** | **项目开发文档**：开发过程记录与总结（背景 / 需求 / 设计 / 分阶段记录 / 问题与总结） |
 | `docs/DEVELOPMENT.md` | 架构决策与取舍理由、模块职责、数据模型、各阶段详细记录 |
 | `docs/TEST_REPORT.md` | 逐阶段测试记录、437 用例分文件分布、遗留问题收敛表 |
 | `docs/DATA_SOURCES.md` | 数据来源分级、核实方式、可信度标注规则 |
+| `docs/HANDOVER.md` | 交付与部署：打包清单、对方启动步骤、离线部署说明 |
+| `docs/QUICKSTART.md` | 三步跑起来的极简说明（可直接发给验收人） |
 
 ---
 
@@ -443,6 +484,18 @@ pytest
 
 ---
 
+## 项目背景与开发过程
+
+这个项目最初是「生成式 AI 与智能体开发」课程设计，之后按**可交付**的标准继续打磨：
+重写数据层并补上来源校验、把检索与作答拆成可单独评估的两层、加上人工标注的质量评估，
+以及一份记录真实踩坑过程的开发文档（`docs/PROJECT_REPORT.md`，11 章）。
+
+过程中放弃或修掉的方案也写在文档里，例如：用 `nx.DiGraph` 会静默合并同向平行边、
+PyVis 的 `cdn_resources="in_line"` 仍会偷偷引入 CDN、四张从 Wikimedia 抓回的图片
+图注与实际内容不符（同名异地 / 同物异指）而被剔除。
+
+---
+
 ## 开发原则
 
 1. 先检查现有文件与环境，再动手修改。
@@ -462,55 +515,27 @@ Python · Streamlit · NetworkX · PyVis · JSON · pytest · Dify（可选）·
 
 ---
 
-## 把本项目交给别人（打包清单）
+## 交付与部署
 
-这门课的作品通常要发给老师验收。以下清单按「**对方拿到后会怎样**」整理，均已在本地实测。
+对方的启动步骤、打包清单（哪些能带、哪些不能带）与离线部署说明，见 **`docs/HANDOVER.md`**。
 
-### 必须随包
+一句话版本：
 
-```
-app.py               conftest.py         pytest.ini        requirements.txt
-src/                 data/               assets/images/    docs/
-tests/               .env.example        .gitignore        README.md
-```
-
-### 不能随包
-
-| 目录 / 文件 | 为什么不能带 |
-|---|---|
-| `.venv/` | Windows 虚拟环境的 `python.exe` 通过 `pyvenv.cfg` **指回你本机的解释器路径**，换机器后无法运行，必须由对方重建 |
-| `.env` | 你的 API Key。已被 `.gitignore` 忽略，用 `git archive` 打包时**不会被包含**；若是手动复制文件夹，务必先删掉它 |
-| `__pycache__/` `.pytest_cache/` `.tmp_probe/` `outputs/` `*.log` | 本地缓存与运行产物，可重建 |
-| `.workbuddy/` | 本地个人工作区记录 |
-
-### 推荐打包方式：用 `git archive`（最干净）
-
-它只会打包**已纳入版本库的文件**，自动排除上面全部不该带的东西：
-
-```bat
-git archive --format=zip -o huizhi-culture.zip HEAD
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+streamlit run app.py          # 打开 http://localhost:8501
+pytest                        # 437 个用例，全程不联网
 ```
 
-产出约 **3 MB**（16 张图片占主要体积），可直接作为邮件附件。
+**不需要 API Key**：没有 `.env` 时问答会自动降级到本地检索式后端，回答依旧带来源引用。
 
-### 对方（导师）收到后要做什么
+---
 
-```bat
-python --version                         :: 必须 >= 3.12（见「环境要求」）
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
-streamlit run app.py
-```
+## 许可证
 
-**不需要 API Key**：未配置 `.env` 时问答会自动降级到本地检索式后端（纯离线），
-界面会明确显示当前后端为「本地检索式（离线可用）」，回答依旧带来源引用。
-这一路径已在**删除 `.env` 的干净副本**上实测：应用正常启动、问答返回 5 条可溯源引用、
-437 个用例全部通过。
+代码以 **MIT** 许可发布，见 `LICENSE`。
 
-> 若对方完全无法联网安装依赖，可另行准备离线 wheel 包
-> （`pip download -r requirements.txt -d wheels/ --platform win_amd64 …`），
-> 本项目未提供开箱即用的离线包。
-
-> 注意：若把 `.git` 目录一并发出，对方能看到完整提交历史，
-> 其中含提交者姓名与邮箱（`git log` 可见）。介意的话请只发 zip 包内容。
+`assets/images/` 下的徽州文化图片来自 Wikimedia Commons，各自遵循 CC BY-SA 等自由许可，
+逐张署名登记在 `assets/images/CREDITS.md`；首页主视觉 `hero_hongcun_nanhu.jpg` 为项目自备素材、
+未标注许可，不在自由许可覆盖范围内。文化数据来源见 `docs/DATA_SOURCES.md`。
