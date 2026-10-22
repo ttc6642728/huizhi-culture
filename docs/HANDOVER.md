@@ -35,7 +35,7 @@ LICENSE
 git archive --format=zip -o huizhi-culture.zip HEAD
 ```
 
-产出约 **3 MB**（16 张图片占主要体积），可直接作为邮件附件。
+产出约 **3.3 MB**（16 张徽州图片 + 5 张界面截图占主要体积），可直接作为邮件附件。
 
 ### 对方（导师）收到后要做什么
 
