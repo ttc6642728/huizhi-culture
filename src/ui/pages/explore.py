@@ -124,7 +124,7 @@ def _render_category_buttons(repo: Repository) -> None:
                 if st.button(
                     f"{label} {count}",
                     key=f"ex_cat_{cid or 'all'}",
-                    use_container_width=True,
+                    width="stretch",
                     type="primary" if label == current else "secondary",
                 ):
                     st.session_state["ex_category"] = label
@@ -187,7 +187,7 @@ def _render_pager(total: int) -> None:
     page = int(st.session_state.get("ex_page", 1) or 1)
     cols = st.columns([1, 3, 1], gap="small")
     with cols[0]:
-        if st.button("← 上一页", key="ex_prev", use_container_width=True, disabled=page <= 1):
+        if st.button("← 上一页", key="ex_prev", width="stretch", disabled=page <= 1):
             st.session_state["ex_page"] = page - 1
             st.rerun()
     with cols[1]:
@@ -196,7 +196,7 @@ def _render_pager(total: int) -> None:
         if st.button(
             "下一页 →",
             key="ex_next",
-            use_container_width=True,
+            width="stretch",
             disabled=page >= page_count,
         ):
             st.session_state["ex_page"] = page + 1

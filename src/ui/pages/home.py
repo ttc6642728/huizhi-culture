@@ -47,7 +47,7 @@ def _render_hero_image() -> None:
     if not path.is_file():
         return
     try:
-        st.image(str(path), use_container_width=True)
+        st.image(str(path), width="stretch")
     except Exception as exc:  # noqa: BLE001 - 图片损坏不应让整页崩溃
         ui.render_error("首页图片无法显示", f"本地图片读取失败：{exc}")
         return

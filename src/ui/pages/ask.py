@@ -152,7 +152,7 @@ def _render_examples(examples: Sequence[str]) -> None:
                 st.button(
                     question,
                     key=f"qa_ex_{start + offset}",
-                    use_container_width=True,
+                    width="stretch",
                     on_click=_queue_question,
                     args=(question,),
                 )
@@ -253,7 +253,7 @@ def _render_passages(res: QAResult, repo: Repository) -> None:
                 "detail",
                 key=f"qa_passage_{index}_{passage.entity_id}",
                 entity_id=passage.entity_id,
-                use_container_width=False,
+                width="content",
             )
 
 
@@ -360,7 +360,7 @@ def _render_history(repo: Repository) -> None:
                 if st.button(
                     f"第 {idx + 1} 次：{history[idx].question[:10]}…",
                     key=f"qa_hist_{idx}",
-                    use_container_width=True,
+                    width="stretch",
                 ):
                     st.session_state[STATE_VIEW] = idx
                     st.rerun()
@@ -404,11 +404,11 @@ def render() -> None:
     )
 
     cols = st.columns([1, 1, 4], gap="small")
-    submit = cols[0].button("提问", key="qa_submit", type="primary", use_container_width=True)
+    submit = cols[0].button("提问", key="qa_submit", type="primary", width="stretch")
     cols[1].button(
         "清空会话",
         key="qa_clear",
-        use_container_width=True,
+        width="stretch",
         on_click=_clear_session,
     )
 

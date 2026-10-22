@@ -90,12 +90,16 @@ def nav_button(
     label: str,
     page: str,
     key: str,
-    use_container_width: bool = True,
+    width: str = "stretch",
     type: str = "secondary",
     **state: object,
 ) -> None:
-    """渲染一个真实可用的跳转按钮（点击后跳转，绝不出现「假按钮」）。"""
-    if st.button(label, key=key, use_container_width=use_container_width, type=type):
+    """渲染一个真实可用的跳转按钮（点击后跳转，绝不出现「假按钮」）。
+
+    ``width`` / ``type`` 直接透传给 ``st.button``：``"stretch"`` 占满容器宽度，
+    ``"content"`` 只占内容宽度。
+    """
+    if st.button(label, key=key, width=width, type=type):
         goto(page, **state)
 
 

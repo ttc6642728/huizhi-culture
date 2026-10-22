@@ -98,7 +98,7 @@ with st.sidebar:
         if st.button(
             item["label"],
             key=f"nav_{item['key']}",
-            use_container_width=True,
+            width="stretch",
             type="primary" if is_active else "secondary",
         ):
             st.session_state["page"] = item["key"]

@@ -572,8 +572,8 @@ def _render_workflow(workflow: AgentWorkflow) -> None:
         help="问题会经过解析 → 检索 → 作答 → 核查 → （必要时）纠正 → 归档六个步骤。",
     )
     cols = st.columns([1, 1, 4], gap="small")
-    submit = cols[0].button("运行工作流", key="wf_run", type="primary", use_container_width=True)
-    cols[1].button("清空", key="wf_clear", use_container_width=True, on_click=_clear)
+    submit = cols[0].button("运行工作流", key="wf_run", type="primary", width="stretch")
+    cols[1].button("清空", key="wf_clear", width="stretch", on_click=_clear)
 
     if examples:
         st.caption("示例问题（由当前数据集实时生成）：")
@@ -586,7 +586,7 @@ def _render_workflow(workflow: AgentWorkflow) -> None:
                     st.button(
                         item,
                         key=f"wf_ex_{start + offset}",
-                        use_container_width=True,
+                        width="stretch",
                         on_click=_queue_question,
                         args=(item,),
                     )

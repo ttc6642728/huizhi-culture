@@ -59,7 +59,7 @@ def _render_image(image: Optional[EntityImage]) -> None:
     if image is None or not image.exists:
         return
     try:
-        st.image(str(image.path), use_container_width=True)
+        st.image(str(image.path), width="stretch")
     except Exception as exc:  # noqa: BLE001 - 图片损坏时不应让整页崩溃
         ui.render_error("图片无法显示", f"本地图片读取失败：{exc}")
         return
@@ -217,7 +217,7 @@ def _render_actions(repo: Repository, entity: Entity) -> None:
             graph_focus=entity.id,
         )
     with cols[2]:
-        with st.popover("实体标识", use_container_width=True):
+        with st.popover("实体标识", width="stretch"):
             st.code(entity.id, language=None)
             st.caption("该 id 用于数据文件与关系引用，可在图谱页或命令行工具中使用。")
 

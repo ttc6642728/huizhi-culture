@@ -156,6 +156,13 @@ hr {{ border: none; border-top: 1px solid {c['line']}; margin: 1.6rem 0; }}
     color: {c['cinnabar']};
     font-weight: 600;
 }}
+/* 与上一条特异性相同、且位置更靠后的 primary:hover 会覆盖它，
+   导致当前页导航在鼠标悬停时被染成朱砂底，因此这里必须显式重述 */
+[data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {{
+    background: {c['surface']};
+    border-color: {c['line_strong']};
+    color: {c['cinnabar']};
+}}
 
 /* ===== 主区域按钮 ===== */
 .stButton > button {{
@@ -186,6 +193,13 @@ hr {{ border: none; border-top: 1px solid {c['line']}; margin: 1.6rem 0; }}
     background: {c['cinnabar_soft']};
     border-color: {c['cinnabar_soft']};
     color: {c['on_accent']};
+}}
+/* 按钮文字由按钮自身的 color 决定：
+   全局 ``p`` 规则（次级文字色）会连按钮里的段落一起染色，
+   于是朱砂底的主按钮上出现近乎不可读的深墨字。 */
+.stButton > button p,
+.stButton > button div[data-testid="stMarkdownContainer"] {{
+    color: inherit;
 }}
 
 /* ===== 输入控件 ===== */
